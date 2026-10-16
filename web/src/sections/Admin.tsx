@@ -132,6 +132,9 @@ export function Finale() {
           <p className="mx-auto mt-4 max-w-3xl font-display text-5xl leading-tight sm:text-6xl">
             Esta tienda funciona con <em>vuestro</em> backend.
           </p>
+          <a href="#tienda" className="mt-8 inline-block bg-ink px-8 py-4 text-[11px] uppercase tracking-[0.25em] text-paper hover:opacity-85">
+            Entrar en la tienda
+          </a>
         </>
       ) : (
         <p className="font-display text-2xl text-muted">Faltan {7 - completed} niveles para abrir la tienda al completo.</p>

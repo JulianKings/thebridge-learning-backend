@@ -16,7 +16,7 @@ export function Garment({ kind, tone, ink, className = '' }: { kind: GarmentKind
   return (
     <div className={`relative overflow-hidden ${className}`} style={{ background: tone }}>
       <svg viewBox="0 0 200 260" className="absolute inset-0 h-full w-full p-[12%]" aria-hidden="true">
-        <path d={PATHS[kind]} fill="none" stroke={ink} strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round" />
+        <path d={PATHS[kind]} fill="none" stroke={ink} strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
       </svg>
     </div>
   )

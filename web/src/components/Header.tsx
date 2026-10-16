@@ -13,13 +13,13 @@ const ROLE_LABEL: Record<Role, string> = {
 
 const NAV = [
   { href: '#catalogo', label: 'Colección' },
-  { href: '#auth', label: 'Mi cuenta' },
+  { href: '#auth', label: 'Cuenta' },
   { href: '#crud', label: 'Panel' },
   { href: '#swagger', label: 'API' },
 ]
 
 export function Header({ onOpenProgress }: { onOpenProgress: () => void }) {
-  const { completed, role, setRole, editorial } = useProgress()
+  const { completed, role, setRole } = useProgress()
   const { cart } = useStore()
 
   const availableRoles: Role[] = [
@@ -30,62 +30,57 @@ export function Header({ onOpenProgress }: { onOpenProgress: () => void }) {
   ]
 
   return (
-    <header className="sticky top-0 z-30 border-b border-line bg-paper/90 backdrop-blur">
-      {editorial && (
-        <div className="overflow-hidden border-b border-line bg-accent py-1.5 text-[10px] uppercase tracking-[0.3em] text-[#141414]">
-          <div className="marquee flex w-max gap-12 whitespace-nowrap">
-            {Array.from({ length: 2 }, (_, k) => (
-              <div key={k} className="flex gap-12">
-                {['Edición editorial', 'Envío gratuito desde 50 €', 'Nueva colección Otoño–Invierno', 'Documentado con Swagger', 'Hecho a mano en Madrid'].map((t) => (
-                  <span key={t}>{t} ✦</span>
-                ))}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-      <div className="mx-auto grid h-16 max-w-[1400px] grid-cols-[1fr_auto_1fr] items-center gap-4 px-4 sm:px-8">
-        <nav className="hidden gap-6 md:flex">
+    <header className="sticky top-0 z-30 border-b border-fx-line bg-fx-bg/70 font-fx text-fx-text backdrop-blur-xl">
+      <div className="mx-auto flex h-16 max-w-[1400px] items-center gap-4 px-4 sm:px-6">
+        <a href="#inicio" className="flex items-center gap-3">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-fx-card-2 text-lg font-bold ring-1 ring-white/10">
+            <span className="fx-gradient-text">H</span>
+          </span>
+          <span className="text-xl font-bold tracking-[0.2em]">HILO</span>
+          <span className="hidden rounded-full border border-fx-line bg-white/5 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-widest text-fx-muted sm:inline">
+            Backend Quest
+          </span>
+        </a>
+
+        <nav className="mx-auto hidden gap-1 md:flex">
           {NAV.map((n) => (
-            <a key={n.href} href={n.href} className="text-[11px] uppercase tracking-[0.18em] text-muted hover:text-ink">
+            <a key={n.href} href={n.href} className="rounded-full px-3.5 py-1.5 text-sm text-fx-muted transition hover:bg-white/5 hover:text-fx-text">
               {n.label}
             </a>
           ))}
         </nav>
-        <a href="#inicio" className="col-start-2 font-display text-2xl tracking-[0.3em] sm:text-4xl sm:tracking-[0.35em]">
-          HILO
-        </a>
-        <div className="col-start-3 flex items-center justify-end gap-3 sm:gap-5">
-          <label className="hidden items-center gap-2 sm:flex text-[11px] uppercase tracking-[0.14em] text-muted">
-            <UserIcon className="h-4 w-4" />
+
+        <div className="ml-auto flex items-center gap-2 md:ml-0">
+          <label className="hidden items-center gap-2 rounded-full border border-fx-line bg-white/5 py-1.5 pl-3 pr-2 text-sm sm:flex">
+            <UserIcon className="h-4 w-4 text-fx-muted" />
             <select
               value={role}
               onChange={(e) => setRole(e.target.value as Role)}
               disabled={availableRoles.length < 2}
-              className="hidden cursor-pointer bg-transparent uppercase text-ink outline-none disabled:cursor-default disabled:text-muted sm:block"
+              className="cursor-pointer bg-transparent text-fx-text outline-none disabled:cursor-default disabled:text-fx-muted"
               aria-label="Ver la tienda como"
             >
               {availableRoles.map((r) => (
-                <option key={r} value={r} className="bg-paper text-ink">
+                <option key={r} value={r} className="bg-fx-card">
                   {ROLE_LABEL[r]}
                 </option>
               ))}
             </select>
           </label>
-          <span className="relative">
-            <ShoppingBag className="h-5 w-5" />
+          <span className="relative flex h-9 w-9 items-center justify-center rounded-full border border-fx-line bg-white/5">
+            <ShoppingBag className="h-4 w-4" />
             {cart.length > 0 && (
-              <span className="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-ink px-1 text-[10px] text-paper">
+              <span className="fx-gradient-bg absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold text-white">
                 {cart.length}
               </span>
             )}
           </span>
           <button
             onClick={onOpenProgress}
-            className="flex items-center gap-2 border border-line px-2.5 py-1.5 text-[11px] lg:hidden"
+            className="flex items-center gap-2 rounded-full border border-fx-line bg-white/5 px-3 py-1.5 text-xs font-semibold lg:hidden"
             aria-label="Ver progreso"
           >
-            <span className="font-medium">{completed}/7</span>
+            {completed}/7
             <ProgressBar className="w-10" />
           </button>
         </div>
