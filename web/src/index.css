@@ -1,0 +1,80 @@
+@import 'tailwindcss';
+
+:root {
+  --paper: #f6f4f0;
+  --paper-2: #edeae4;
+  --ink: #141414;
+  --muted: #7a756c;
+  --line: #dcd8d0;
+  --accent: #141414;
+  --ok: #2f6b45;
+  --ok-soft: #e3eee6;
+  --bad: #a3392b;
+  --bad-soft: #f5e2df;
+  --panel: #ffffff;
+}
+
+/* Level 6 reward: the store dresses up. */
+:root[data-editorial='on'] {
+  --paper: #0f0e0d;
+  --paper-2: #1a1917;
+  --ink: #f2efe9;
+  --muted: #a39d92;
+  --line: #2e2c29;
+  --accent: #c8a96a;
+  --ok: #7fbf8f;
+  --ok-soft: #1c2a20;
+  --bad: #e38b7d;
+  --bad-soft: #2e1c19;
+  --panel: #161513;
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-paper-2: var(--paper-2);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-bad: var(--bad);
+  --color-bad-soft: var(--bad-soft);
+  --color-panel: var(--panel);
+  --font-display: 'Bodoni Moda', 'Didot', serif;
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.8s ease, color 0.8s ease;
+}
+
+.eyebrow {
+  font-size: 0.68rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+.marquee {
+  animation: marquee 28s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee { animation: none; }
+  html { scroll-behavior: auto; }
+}
