@@ -1,22 +1,18 @@
 import { motion } from 'framer-motion'
 import { ArrowRight, Gamepad2, Lock, Trophy } from 'lucide-react'
+import { API_URL } from '../config'
 import { LevelBadge } from '../fx/fx'
 import { LEVELS } from '../levels/levels'
 import { useProgress } from '../progress/ProgressContext'
 
-const API_URL = 'https://hilo-api.onrender.com'
-
-// Overview slide: explains the game, shows the watched API and every level.
 export function Intro() {
-  const { completed, checks, isUnlocked } = useProgress()
-  const online = isUnlocked(1)
-  const totalChecks = LEVELS.reduce((n, l) => n + l.checks.length, 0)
-  const passedChecks = Object.values(checks).reduce((n, c) => n + Object.values(c).filter((s) => s === 'pass').length, 0)
+  const { completed, checkCount, statusResponse } = useProgress()
+  const online = statusResponse !== null
   const next = LEVELS[completed]
 
   const stats = [
     { label: 'Niveles', value: `${completed}/7` },
-    { label: 'Checks', value: `${passedChecks}/${totalChecks}` },
+    { label: 'Checks', value: `${checkCount.passed}/${checkCount.total}` },
     { label: 'Siguiente', value: next ? next.title : '¡Ninguno!' },
   ]
 
@@ -55,17 +51,14 @@ export function Intro() {
           </div>
           <div className="space-y-2 p-5 leading-relaxed">
             <p>
-              <span className="text-fx-pink">$</span> curl {API_URL}/health
+              <span className="text-fx-pink">$</span> curl {API_URL}/api/status
             </p>
-            {online ? (
+            {statusResponse ? (
               <>
-                <p className="text-fx-green">HTTP/1.1 200 OK</p>
-                <p className="text-fx-muted">
-                  {'{ '}
-                  <span className="text-fx-cyan">"status"</span>: <span className="text-fx-amber">"ok"</span>,{' '}
-                  <span className="text-fx-cyan">"db"</span>: <span className="text-fx-amber">"connected"</span>
-                  {' }'}
+                <p className={statusResponse.status < 400 ? 'text-fx-green' : 'text-fx-red'}>
+                  HTTP {statusResponse.status} · {statusResponse.ms} ms
                 </p>
+                <p className="break-all text-fx-amber">{JSON.stringify(statusResponse.body)}</p>
               </>
             ) : (
               <p className="text-fx-red">curl: (7) Failed to connect · la API aún no responde</p>

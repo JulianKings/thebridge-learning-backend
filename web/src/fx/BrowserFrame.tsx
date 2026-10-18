@@ -4,8 +4,6 @@ import type { ReactNode } from 'react'
 import { useProgress } from '../progress/ProgressContext'
 import { LEVEL_URLS } from './fx'
 
-// A browser window around each store preview, so it's clear the inside is
-// the real website the students are unlocking.
 export function BrowserFrame({ level, children }: { level: number; children: ReactNode }) {
   const { completed, editorial } = useProgress()
   const unlocked = completed >= level

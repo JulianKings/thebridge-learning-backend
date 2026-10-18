@@ -1,6 +1,5 @@
 import { ChevronRight, Lock } from 'lucide-react'
 import { useState } from 'react'
-import { LockedSection } from '../components/LockedSection'
 import { useProgress } from '../progress/ProgressContext'
 import { SectionHeading } from './SectionHeading'
 
@@ -43,8 +42,8 @@ export function Docs() {
   const [open, setOpen] = useState<string | null>('GET /api/products')
 
   return (
-    <LockedSection level={6} className="px-4 py-16 sm:px-8">
-      <SectionHeading level={6} title="Documentación de la API">
+    <div className="px-4 py-16 sm:px-8">
+      <SectionHeading level={5} title="Documentación de la API">
         <span className="font-mono text-xs text-muted">OpenAPI 3.0 · /api-docs</span>
       </SectionHeading>
 
@@ -81,7 +80,7 @@ export function Docs() {
         </div>
 
         <aside className="self-start border border-accent p-6 sm:p-8">
-          <p className="eyebrow">Recompensa del nivel 6</p>
+          <p className="eyebrow">Recompensa del nivel 5</p>
           <p className="mt-3 font-display text-3xl leading-tight">Modo editorial</p>
           <p className="mt-3 text-sm leading-relaxed text-muted">
             Una API bien documentada merece una tienda a su altura. Paleta nocturna, detalles dorados y un nuevo
@@ -100,6 +99,6 @@ export function Docs() {
           </button>
         </aside>
       </div>
-    </LockedSection>
+    </div>
   )
 }

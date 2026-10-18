@@ -1,30 +1,28 @@
 import { motion } from 'framer-motion'
-import { BookOpen, KeyRound, PencilRuler, Plug, ShieldCheck, Shirt, Store } from 'lucide-react'
+import { BookOpen, Database, KeyRound, PencilRuler, Plug, SlidersHorizontal, Store } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useId } from 'react'
 
 export const LEVEL_ICONS: Record<number, LucideIcon> = {
   1: Plug,
-  2: Shirt,
-  3: KeyRound,
-  4: PencilRuler,
-  5: ShieldCheck,
-  6: BookOpen,
+  2: Database,
+  3: PencilRuler,
+  4: KeyRound,
+  5: BookOpen,
+  6: SlidersHorizontal,
   7: Store,
 }
 
-// Fake store URL shown in each slide's browser frame.
 export const LEVEL_URLS: Record<number, string> = {
   1: 'hilo.store',
   2: 'hilo.store/coleccion',
-  3: 'hilo.store/cuenta',
-  4: 'hilo.store/panel',
-  5: 'hilo.store/seguridad',
-  6: 'hilo.store/api-docs',
+  3: 'hilo.store/panel',
+  4: 'hilo.store/cuenta',
+  5: 'hilo.store/api-docs',
+  6: 'hilo.store/buscar',
   7: 'hilo.store/gestion',
 }
 
-// Slow-moving colour blobs and a faint grid behind the progress view.
 export function Aurora() {
   return (
     <div aria-hidden="true" className="pointer-events-none fixed inset-0 -z-10 overflow-hidden bg-fx-bg">

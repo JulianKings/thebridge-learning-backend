@@ -7,8 +7,6 @@ import { SLIDE_KEYS, goToSlide } from './slides'
 const arrow =
   'flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-fx-card text-fx-text ring-1 ring-fx-line transition hover:bg-fx-card-2 hover:ring-fx-pink/60'
 
-// Level track: nodes joined by a line that fills with the gradient as the
-// students pass levels.
 export function SlideNav({ index }: { index: number }) {
   const { completed } = useProgress()
   const items = [{ id: 0, title: 'Inicio', short: 'Inicio' }, ...LEVELS.map((l) => ({ id: l.id, title: l.title, short: l.short }))]

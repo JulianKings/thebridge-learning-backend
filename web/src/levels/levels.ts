@@ -1,10 +1,16 @@
-// Each level is one milestone of the students' API. For now every check is
-// simulated by the demo panel; later each check gets a `run(api)` function
-// that probes the real API.
+import { API_URL } from '../config'
+
+export type ApiResponse = { status: number; body: unknown; ms: number }
+
+export type CheckContext = {
+  // Responses are cached per run, so several checks can inspect the same call.
+  get: (path: string) => Promise<ApiResponse>
+}
 
 export type CheckDef = {
   id: string
   label: string
+  run: (ctx: CheckContext) => Promise<void>
 }
 
 export type LevelDef = {
@@ -15,99 +21,112 @@ export type LevelDef = {
   tagline: string
   goal: string
   reward: string
+  // Empty until the class reaches that stage; a level without checks stays locked.
   checks: CheckDef[]
+}
+
+export class CheckFailed extends Error {}
+
+export async function request(path: string): Promise<ApiResponse> {
+  const start = performance.now()
+  let res: Response
+  try {
+    res = await fetch(`${API_URL}${path}`, { signal: AbortSignal.timeout(8000) })
+  } catch {
+    // The browser reports a CORS rejection exactly like a dead server.
+    throw new CheckFailed('Sin respuesta. ¿Está el servidor encendido y con CORS activado?')
+  }
+  const ms = Math.round(performance.now() - start)
+  const body = await res.json().catch(() => null)
+  return { status: res.status, body, ms }
 }
 
 export const LEVELS: LevelDef[] = [
   {
     id: 1,
     key: 'conexion',
-    title: 'Conexión',
-    short: 'Conexión',
-    tagline: 'Express + MongoDB en marcha',
-    goal: 'Levanta un servidor Express desplegado y conéctalo a MongoDB.',
+    title: 'Primer endpoint',
+    short: 'Express',
+    tagline: 'Node, Express y MVC',
+    goal: 'Crea un servidor Express con estructura MVC y un endpoint GET /api/status que responda { "status": "ok" }.',
     reward: 'La tienda abre sus puertas: portada y estado del servidor en vivo.',
     checks: [
-      { id: 'reachable', label: 'El servidor responde en la URL de despliegue' },
-      { id: 'cors', label: 'CORS permite peticiones desde esta web' },
-      { id: 'health', label: 'GET /health devuelve { status: "ok" }' },
-      { id: 'mongo', label: 'MongoDB aparece como conectada' },
+      {
+        id: 'reachable',
+        label: 'El servidor responde',
+        run: async (ctx) => {
+          await ctx.get('/api/status')
+        },
+      },
+      {
+        id: 'ok',
+        label: 'GET /api/status devuelve 200',
+        run: async (ctx) => {
+          const { status } = await ctx.get('/api/status')
+          if (status !== 200) throw new CheckFailed(`Ha devuelto ${status}`)
+        },
+      },
+      {
+        id: 'json',
+        label: 'La respuesta es { "status": "ok" }',
+        run: async (ctx) => {
+          const { body } = await ctx.get('/api/status')
+          if ((body as { status?: unknown } | null)?.status !== 'ok') {
+            throw new CheckFailed(`Hemos recibido ${JSON.stringify(body)}`)
+          }
+        },
+      },
     ],
   },
   {
     id: 2,
     key: 'catalogo',
-    title: 'Catálogo',
-    short: 'Catálogo',
-    tagline: 'Primer endpoint GET con datos',
-    goal: 'Crea el modelo de prenda y un GET /api/products que devuelva el catálogo.',
-    reward: 'El escaparate se llena con las prendas de tu base de datos.',
-    checks: [
-      { id: 'get', label: 'GET /api/products responde 200' },
-      { id: 'array', label: 'La respuesta es un array con prendas' },
-      { id: 'shape', label: 'Cada prenda tiene nombre, precio, categoría y tallas' },
-      { id: 'detail', label: 'GET /api/products/:id devuelve una prenda' },
-    ],
+    title: 'Base de datos',
+    short: 'Mongoose',
+    tagline: 'Mongoose + MongoDB',
+    goal: 'Conecta la API a MongoDB con Mongoose y sirve el catálogo de prendas desde la base de datos.',
+    reward: 'El escaparate se llena con las prendas de vuestra base de datos.',
+    checks: [],
   },
   {
     id: 3,
-    key: 'auth',
-    title: 'Autenticación',
-    short: 'Auth',
-    tagline: 'Registro e inicio de sesión',
-    goal: 'Permite registrarse e iniciar sesión, guardando las contraseñas cifradas.',
-    reward: 'Los clientes pueden crear su cuenta y entrar en su perfil.',
-    checks: [
-      { id: 'register', label: 'POST /api/auth/register crea un usuario' },
-      { id: 'login', label: 'POST /api/auth/login acepta credenciales válidas' },
-      { id: 'wrong', label: 'Una contraseña incorrecta se rechaza (401)' },
-      { id: 'hash', label: 'La contraseña nunca se devuelve en la respuesta' },
-    ],
-  },
-  {
-    id: 4,
     key: 'crud',
     title: 'CRUD',
     short: 'CRUD',
-    tagline: 'Crear, editar y borrar prendas',
-    goal: 'Completa el CRUD de prendas para que los trabajadores gestionen el catálogo.',
+    tagline: 'API REST y validación',
+    goal: 'Completa el CRUD de prendas siguiendo REST y valida los datos que llegan a la API.',
     reward: 'Se activa el panel de trabajador para gestionar el catálogo.',
-    checks: [
-      { id: 'create', label: 'POST /api/products crea una prenda' },
-      { id: 'update', label: 'PUT /api/products/:id la modifica' },
-      { id: 'delete', label: 'DELETE /api/products/:id la elimina' },
-      { id: 'validate', label: 'Datos inválidos devuelven 400' },
-    ],
+    checks: [],
+  },
+  {
+    id: 4,
+    key: 'auth',
+    title: 'Autenticación',
+    short: 'Auth',
+    tagline: 'Login, JWT y rutas protegidas',
+    goal: 'Registro e inicio de sesión con contraseñas cifradas, tokens JWT y rutas protegidas por rol.',
+    reward: 'Los clientes entran en su cuenta y cada rol ve solo lo que le corresponde.',
+    checks: [],
   },
   {
     id: 5,
-    key: 'jwt',
-    title: 'Seguridad JWT',
-    short: 'JWT',
-    tagline: 'Rutas protegidas con tokens',
-    goal: 'Protege las rutas con JWT y aplica permisos según el rol del usuario.',
-    reward: 'La tienda es segura: cada rol ve solo lo que le corresponde.',
-    checks: [
-      { id: 'token', label: 'El login devuelve un JWT válido' },
-      { id: 'notoken', label: 'Sin token, las rutas protegidas devuelven 401' },
-      { id: 'tampered', label: 'Un token manipulado se rechaza' },
-      { id: 'roles', label: 'Un cliente no puede editar prendas (403)' },
-    ],
-  },
-  {
-    id: 6,
     key: 'swagger',
     title: 'Documentación',
     short: 'Swagger',
     tagline: 'Swagger / OpenAPI',
     goal: 'Documenta la API con Swagger para que cualquiera pueda usarla.',
-    reward: 'Recompensa: la web se pone de gala con el modo editorial.',
-    checks: [
-      { id: 'docs', label: '/api-docs sirve la documentación' },
-      { id: 'spec', label: 'La especificación OpenAPI es válida' },
-      { id: 'coverage', label: 'Documenta todos los endpoints de los niveles 2–5' },
-      { id: 'auth', label: 'Describe la autenticación Bearer' },
-    ],
+    reward: 'La tienda se pone de gala con el modo editorial.',
+    checks: [],
+  },
+  {
+    id: 6,
+    key: 'mejoras',
+    title: 'Mejoras',
+    short: 'Mejoras',
+    tagline: 'Postman, CORS y pulido',
+    goal: 'Prueba la API con Postman, configura CORS solo para esta web y pule las respuestas y los errores.',
+    reward: 'Búsqueda, filtros y paginación en el catálogo.',
+    checks: [],
   },
   {
     id: 7,
@@ -115,14 +134,9 @@ export const LEVELS: LevelDef[] = [
     title: 'Tienda completa',
     short: 'Final',
     tagline: 'Todos los endpoints',
-    goal: 'Añade materiales, vincúlalos a prendas y crea la gestión de usuarios para encargados.',
-    reward: 'La tienda al completo: materiales, equipo y clientes.',
-    checks: [
-      { id: 'supplies', label: 'CRUD de materiales en /api/supplies' },
-      { id: 'bind', label: 'Los materiales se vinculan a prendas' },
-      { id: 'users', label: 'Los encargados gestionan clientes y trabajadores' },
-      { id: 'tiers', label: 'Un trabajador no puede gestionar usuarios (403)' },
-    ],
+    goal: 'Añade los endpoints que faltan: materiales, pedidos y gestión de usuarios.',
+    reward: 'La tienda al completo, funcionando con vuestra API.',
+    checks: [],
   },
 ]
 

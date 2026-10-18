@@ -1,33 +1,11 @@
-import { ShoppingBag, User as UserIcon } from 'lucide-react'
+import { RotateCw } from 'lucide-react'
+import { API_URL } from '../config'
 import { useProgress } from '../progress/ProgressContext'
-import type { Role } from '../progress/ProgressContext'
-import { useStore } from '../store/StoreContext'
 import { ProgressBar } from './ProgressPanel'
 
-const ROLE_LABEL: Record<Role, string> = {
-  invitado: 'Invitado',
-  cliente: 'Cliente',
-  trabajador: 'Trabajador',
-  encargado: 'Encargado',
-}
-
-const NAV = [
-  { href: '#catalogo', label: 'Colección' },
-  { href: '#auth', label: 'Cuenta' },
-  { href: '#crud', label: 'Panel' },
-  { href: '#swagger', label: 'API' },
-]
-
 export function Header({ onOpenProgress }: { onOpenProgress: () => void }) {
-  const { completed, role, setRole } = useProgress()
-  const { cart } = useStore()
-
-  const availableRoles: Role[] = [
-    'invitado',
-    ...(completed >= 3 ? (['cliente'] as Role[]) : []),
-    ...(completed >= 4 ? (['trabajador'] as Role[]) : []),
-    ...(completed >= 7 ? (['encargado'] as Role[]) : []),
-  ]
+  const { completed, statusResponse, checkedAt, running, runChecks } = useProgress()
+  const online = statusResponse !== null
 
   return (
     <header className="sticky top-0 z-30 border-b border-fx-line bg-fx-bg/70 font-fx text-fx-text backdrop-blur-xl">
@@ -42,39 +20,23 @@ export function Header({ onOpenProgress }: { onOpenProgress: () => void }) {
           </span>
         </a>
 
-        <nav className="mx-auto hidden gap-1 md:flex">
-          {NAV.map((n) => (
-            <a key={n.href} href={n.href} className="rounded-full px-3.5 py-1.5 text-sm text-fx-muted transition hover:bg-white/5 hover:text-fx-text">
-              {n.label}
-            </a>
-          ))}
-        </nav>
-
-        <div className="ml-auto flex items-center gap-2 md:ml-0">
-          <label className="hidden items-center gap-2 rounded-full border border-fx-line bg-white/5 py-1.5 pl-3 pr-2 text-sm sm:flex">
-            <UserIcon className="h-4 w-4 text-fx-muted" />
-            <select
-              value={role}
-              onChange={(e) => setRole(e.target.value as Role)}
-              disabled={availableRoles.length < 2}
-              className="cursor-pointer bg-transparent text-fx-text outline-none disabled:cursor-default disabled:text-fx-muted"
-              aria-label="Ver la tienda como"
+        <div className="ml-auto flex items-center gap-2">
+          <div className="hidden items-center gap-2 rounded-full border border-fx-line bg-white/5 py-1.5 pl-3 pr-1.5 text-sm md:flex">
+            <span className={`h-2 w-2 shrink-0 rounded-full ${online ? 'animate-pulse bg-fx-green' : 'bg-fx-red'}`} />
+            <span className="max-w-56 truncate font-mono text-xs text-fx-muted" title={API_URL}>
+              {API_URL.replace(/^https?:\/\//, '')}
+            </span>
+            {checkedAt && <span className="text-xs text-fx-muted">· {checkedAt.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</span>}
+            <button
+              onClick={runChecks}
+              disabled={running}
+              className="flex h-7 w-7 items-center justify-center rounded-full hover:bg-white/10 disabled:opacity-60"
+              aria-label="Volver a comprobar la API"
+              title="Volver a comprobar"
             >
-              {availableRoles.map((r) => (
-                <option key={r} value={r} className="bg-fx-card">
-                  {ROLE_LABEL[r]}
-                </option>
-              ))}
-            </select>
-          </label>
-          <span className="relative flex h-9 w-9 items-center justify-center rounded-full border border-fx-line bg-white/5">
-            <ShoppingBag className="h-4 w-4" />
-            {cart.length > 0 && (
-              <span className="fx-gradient-bg absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold text-white">
-                {cart.length}
-              </span>
-            )}
-          </span>
+              <RotateCw className={`h-3.5 w-3.5 ${running ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
           <button
             onClick={onOpenProgress}
             className="flex items-center gap-2 rounded-full border border-fx-line bg-white/5 px-3 py-1.5 text-xs font-semibold lg:hidden"

@@ -1,6 +1,6 @@
 import { ArrowRight } from 'lucide-react'
 import { useQuery } from '../../api/hooks'
-import { api } from '../../api/mockApi'
+import { api } from '../../api/client'
 import { Garment } from '../../components/Garment'
 import { shopHref } from '../router'
 import { ErrorBox, GridSkeleton, ProductCard } from '../ui'

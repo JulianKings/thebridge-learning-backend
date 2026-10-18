@@ -3,7 +3,7 @@ import { Pencil, Plus, Trash2, X } from 'lucide-react'
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { useQuery } from '../../api/hooks'
-import { api } from '../../api/mockApi'
+import { api } from '../../api/client'
 import type { Order, Product, Role, Supply } from '../../api/types'
 import { Garment } from '../../components/Garment'
 import type { GarmentKind } from '../../data/mock'
@@ -47,8 +47,6 @@ async function attempt(fn: () => Promise<unknown>, ok: string) {
     return false
   }
 }
-
-// ---- Products --------------------------------------------------------------
 
 function ProductEditor({ initial, onClose }: { initial: Product | null; onClose: () => void }) {
   const [p, setP] = useState<Omit<Product, 'id'>>(() => (initial ? { ...initial } : blankProduct()))
@@ -246,8 +244,6 @@ function ProductsTab({ editId }: { editId?: string }) {
   )
 }
 
-// ---- Supplies --------------------------------------------------------------
-
 function SuppliesTab() {
   const { data, error } = useQuery(() => api.listSupplies(), [])
   const { data: products } = useQuery(() => api.listProducts(), [])
@@ -313,8 +309,6 @@ function SuppliesTab() {
   )
 }
 
-// ---- Orders ----------------------------------------------------------------
-
 const STATUSES: Order['status'][] = ['Pagado', 'Enviado', 'Entregado']
 
 function OrdersTab() {
@@ -348,8 +342,6 @@ function OrdersTab() {
     </ul>
   )
 }
-
-// ---- Users -----------------------------------------------------------------
 
 function UsersTab() {
   const { user: me } = useAuth()
@@ -388,8 +380,6 @@ function UsersTab() {
     </ul>
   )
 }
-
-// ---- Page ------------------------------------------------------------------
 
 export function Manage({ tab = 'prendas', id }: { tab?: string; id?: string }) {
   const { isManager } = useAuth()

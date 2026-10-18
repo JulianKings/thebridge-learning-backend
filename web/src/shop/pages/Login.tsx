@@ -4,12 +4,6 @@ import { useAuth } from '../AuthContext'
 import { navigate } from '../router'
 import { btnGhost, btnPrimary, field, toast, toastError } from '../ui'
 
-const DEMO_ACCOUNTS = [
-  { label: 'Cliente', email: 'carlos@correo.es' },
-  { label: 'Trabajador', email: 'diego@hilo.store' },
-  { label: 'Encargada', email: 'lucia@hilo.store' },
-]
-
 export function Login({ next }: { next?: string }) {
   const { login, register } = useAuth()
   const [email, setEmail] = useState('')
@@ -54,28 +48,6 @@ export function Login({ next }: { next?: string }) {
         <button disabled={busy} className={`${btnPrimary} mt-8 w-full`}>
           Entrar
         </button>
-
-        <div className="mt-10 border border-dashed border-line p-5">
-          <p className="eyebrow">Cuentas de demostración · contraseña hilo1234</p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {DEMO_ACCOUNTS.map((a) => (
-              <button
-                key={a.email}
-                type="button"
-                disabled={busy}
-                onClick={() => {
-                  setEmail(a.email)
-                  setPassword('hilo1234')
-                  run(() => login(a.email, 'hilo1234'))
-                }}
-                className="border border-line px-3 py-2 text-left text-xs hover:border-ink"
-              >
-                <span className="block uppercase tracking-wider">{a.label}</span>
-                <span className="text-muted">{a.email}</span>
-              </button>
-            ))}
-          </div>
-        </div>
       </form>
 
       <form onSubmit={onRegister}>

@@ -1,16 +1,11 @@
 import { useEffect, useState, useSyncExternalStore } from 'react'
-import { apiStore } from './mockApi'
+import { apiVersion } from './client'
 import type { ApiError } from './types'
 
-export function useApiState() {
-  return useSyncExternalStore(apiStore.subscribe, apiStore.get)
-}
-
-// Fetches on mount, when deps change, and after any write to the API so every
-// screen stays in sync with the "server". Keeps old data while reloading,
-// drops it on error so outages are visible.
+// Refetches whenever deps change or the API is written to. Old data stays on
+// screen while reloading but is dropped on error, so failures are visible.
 export function useQuery<T>(fn: () => Promise<T>, deps: unknown[] = []) {
-  const { version } = useApiState()
+  const version = useSyncExternalStore(apiVersion.subscribe, apiVersion.get)
   const [state, setState] = useState<{ data?: T; error?: ApiError; loading: boolean }>({ loading: true })
 
   useEffect(() => {

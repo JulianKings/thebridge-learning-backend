@@ -2,7 +2,7 @@ import { motion } from 'framer-motion'
 import { Check, LoaderCircle, X } from 'lucide-react'
 import type { LevelDef } from '../levels/levels'
 import { useProgress } from '../progress/ProgressContext'
-import type { CheckStatus } from '../progress/ProgressContext'
+import type { CheckResult, CheckStatus } from '../progress/ProgressContext'
 
 function StatusIcon({ status }: { status: CheckStatus }) {
   if (status === 'pass')
@@ -21,13 +21,12 @@ function StatusIcon({ status }: { status: CheckStatus }) {
   return <span className="h-5 w-5 rounded-full border-2 border-fx-line" />
 }
 
-// Lives in the dark FX chrome (lock cards and the progress panel).
 export function CheckList({ level, compact = false }: { level: LevelDef; compact?: boolean }) {
-  const { checks } = useProgress()
+  const { results } = useProgress()
   return (
     <ul className={compact ? 'space-y-2' : 'space-y-2.5'}>
       {level.checks.map((c) => {
-        const status = checks[level.id]?.[c.id] ?? 'idle'
+        const { status, message } = results[level.id]?.[c.id] ?? ({ status: 'idle' } as CheckResult)
         return (
           <li key={c.id} className="flex items-start gap-3">
             <span className="flex shrink-0 items-center justify-center">
@@ -39,6 +38,7 @@ export function CheckList({ level, compact = false }: { level: LevelDef; compact
               }`}
             >
               {c.label}
+              {status === 'fail' && message && <span className="mt-0.5 block text-xs text-fx-red/80">{message}</span>}
             </span>
           </li>
         )

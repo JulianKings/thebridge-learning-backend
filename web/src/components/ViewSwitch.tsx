@@ -1,7 +1,5 @@
 import { BookOpen, ShoppingBag } from 'lucide-react'
 
-// Floating tab on the left edge: from the shop back to the API progress, and
-// (once everything is unlocked) from the progress view into the shop.
 export function ViewSwitch({ to }: { to: 'progress' | 'shop' }) {
   const toShop = to === 'shop'
   const Icon = toShop ? ShoppingBag : BookOpen

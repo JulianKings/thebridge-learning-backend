@@ -1,7 +1,5 @@
 import { Check, Minus, ShieldCheck } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { LockedSection } from '../components/LockedSection'
-import { useProgress } from '../progress/ProgressContext'
 import { SectionHeading } from './SectionHeading'
 
 const TOKEN = [
@@ -37,12 +35,11 @@ function useCountdown(seconds: number) {
 }
 
 export function Security() {
-  const { isUnlocked } = useProgress()
   const expires = useCountdown(3540)
 
   return (
-    <LockedSection level={5} className="px-4 py-16 sm:px-8">
-      <SectionHeading level={5} title="Sesión segura">
+    <div className="px-4 py-16 sm:px-8">
+      <SectionHeading level={4} title="Sesión segura">
         <span className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-ok">
           <ShieldCheck className="h-4 w-4" /> Rutas protegidas
         </span>
@@ -67,7 +64,7 @@ export function Security() {
             </pre>
             <div className="flex flex-col justify-center border border-line p-4 text-center">
               <p className="eyebrow">Caduca en</p>
-              <p className="mt-1 font-mono text-2xl tabular-nums">{isUnlocked(5) ? expires : '59:00'}</p>
+              <p className="mt-1 font-mono text-2xl tabular-nums">{expires}</p>
             </div>
           </div>
         </div>
@@ -110,6 +107,6 @@ export function Security() {
           </ul>
         </div>
       </div>
-    </LockedSection>
+    </div>
   )
 }

@@ -14,7 +14,7 @@
   --panel: #ffffff;
 }
 
-/* Level 6 reward: the store dresses up. */
+/* Editorial theme, the level 5 reward. */
 :root[data-editorial='on'] {
   --paper: #0f0e0d;
   --paper-2: #1a1917;
@@ -75,14 +75,6 @@
 
 .fx-gradient-bg {
   background: linear-gradient(110deg, #8b5cf6, #ec4899 55%, #f59e0b);
-}
-
-/* 1px gradient border on a solid card. */
-.fx-border {
-  border: 1px solid transparent;
-  background:
-    linear-gradient(var(--color-fx-card), var(--color-fx-card)) padding-box,
-    linear-gradient(135deg, #8b5cf6, #ec4899, #f59e0b) border-box;
 }
 
 .fx-glow {

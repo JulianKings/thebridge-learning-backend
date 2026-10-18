@@ -1,30 +1,25 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { Gift, Lock, Sparkles } from 'lucide-react'
+import { Gift, Lock, RotateCw, Sparkles } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { LevelBadge } from '../fx/fx'
 import { levelById } from '../levels/levels'
 import { useProgress } from '../progress/ProgressContext'
 import { CheckList } from './CheckList'
 
-type Props = {
-  level: number
-  className?: string
-  children: ReactNode
-}
-
-// Wraps a part of the store. Until `level` is passed, the content is a
-// blurred preview with mock data and a card explaining what to build.
-export function LockedSection({ level, className = '', children }: Props) {
-  const { isUnlocked, completed, running, failedLevel, checks } = useProgress()
+// Until `level` passes, its part of the store is a blurred preview with mock
+// data under a card explaining what to build.
+export function LockedSection({ level, children }: { level: number; children: ReactNode }) {
+  const { isUnlocked, completed, running, failedLevel, results, runChecks } = useProgress()
   const def = levelById(level)
   const unlocked = isUnlocked(level)
   const isNext = completed + 1 === level
-  const passed = Object.values(checks[level] ?? {}).filter((s) => s === 'pass').length
+  const passed = Object.values(results[level] ?? {}).filter((r) => r.status === 'pass').length
+  const pending = def.checks.length === 0
 
   return (
     <section
       aria-label={def.title}
-      className={`relative ${unlocked ? '' : 'h-full min-h-[600px] overflow-hidden'} ${className}`}
+      className={`relative ${unlocked ? '' : 'h-full min-h-[600px] overflow-hidden'}`}
     >
       <motion.div
         initial={false}
@@ -48,7 +43,7 @@ export function LockedSection({ level, className = '', children }: Props) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0, scale: 1.08, filter: 'blur(6px)', transition: { duration: 0.6 } }}
-            className="absolute inset-0 z-10 flex items-center justify-center bg-gradient-to-b from-fx-bg/10 via-fx-bg/40 to-fx-bg/10 px-4 py-10"
+            className="absolute inset-0 z-10 flex items-center justify-center bg-linear-to-b from-fx-bg/10 via-fx-bg/40 to-fx-bg/10 px-4 py-10"
           >
             <motion.div
               initial={{ y: 16, opacity: 0 }}
@@ -77,19 +72,23 @@ export function LockedSection({ level, className = '', children }: Props) {
                 <p className="mt-4 text-sm leading-relaxed text-fx-muted">{def.goal}</p>
 
                 <div className="mt-5 rounded-2xl bg-fx-bg/60 p-4">
-                  <div className="mb-3 flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider text-fx-muted">
-                    <span>Checklist</span>
-                    <span className={passed ? 'text-fx-green' : ''}>
-                      {passed}/{def.checks.length}
-                    </span>
-                  </div>
-                  <CheckList level={def} />
+                  {pending ? (
+                    <p className="text-sm text-fx-muted">Los checks de este nivel se publicarán cuando empecéis esta etapa.</p>
+                  ) : (
+                    <>
+                      <div className="mb-3 flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider text-fx-muted">
+                        <span>Checklist</span>
+                        <span className={passed ? 'text-fx-green' : ''}>
+                          {passed}/{def.checks.length}
+                        </span>
+                      </div>
+                      <CheckList level={def} />
+                    </>
+                  )}
                 </div>
 
                 <div className="mt-5 flex items-start gap-2 text-xs">
-                  {running === level ? (
-                    <span className="text-fx-pink">Comprobando tu API…</span>
-                  ) : failedLevel === level ? (
+                  {failedLevel === level ? (
                     <span className="text-fx-red">¡Casi! Revisa el punto en rojo y vuelve a intentarlo.</span>
                   ) : isNext ? (
                     <>
@@ -102,6 +101,17 @@ export function LockedSection({ level, className = '', children }: Props) {
                     <span className="text-fx-muted">Completa el nivel {level - 1} para empezar este.</span>
                   )}
                 </div>
+
+                {isNext && !pending && (
+                  <button
+                    onClick={runChecks}
+                    disabled={running}
+                    className="mt-5 flex w-full items-center justify-center gap-2 rounded-full border border-fx-line bg-white/5 py-2.5 text-sm font-semibold transition hover:border-fx-pink/60 disabled:opacity-60"
+                  >
+                    <RotateCw className={`h-4 w-4 ${running ? 'animate-spin' : ''}`} />
+                    {running ? 'Comprobando tu API…' : 'Comprobar ahora'}
+                  </button>
+                )}
               </div>
             </motion.div>
           </motion.div>

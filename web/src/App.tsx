@@ -1,55 +1,57 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { X } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import type { ReactNode } from 'react'
 import { Celebration } from './components/Celebration'
-import { DemoPanel } from './components/DemoPanel'
 import { Header } from './components/Header'
+import { LockedSection } from './components/LockedSection'
 import { ProgressPanel } from './components/ProgressPanel'
+import { ViewSwitch } from './components/ViewSwitch'
+import { BrowserFrame } from './fx/BrowserFrame'
+import { Aurora } from './fx/fx'
 import { useProgress } from './progress/ProgressContext'
 import { Account } from './sections/Account'
 import { Admin, Finale } from './sections/Admin'
 import { Backoffice } from './sections/Backoffice'
 import { Catalog } from './sections/Catalog'
 import { Docs } from './sections/Docs'
+import { Explore } from './sections/Explore'
 import { Hero } from './sections/Hero'
 import { Intro } from './sections/Intro'
 import { Security } from './sections/Security'
-import { ApiConsole } from './components/ApiConsole'
-import { BrowserFrame } from './fx/BrowserFrame'
-import { Aurora } from './fx/fx'
-import { ViewSwitch } from './components/ViewSwitch'
 import { isShopPath, useHashPath } from './shop/router'
 import { ShopApp } from './shop/ShopApp'
 import { SlideNav } from './slides/SlideNav'
 import { goToSlide, useSlide } from './slides/slides'
 
-// Slide 0 is the flashy overview; each level shows its part of the store
-// inside a browser frame, in the store's own (sober) style.
-const SLIDES = [
-  <Intro />,
-  <BrowserFrame level={1}>
-    <Hero />
-  </BrowserFrame>,
-  <BrowserFrame level={2}>
-    <Catalog />
-  </BrowserFrame>,
-  <BrowserFrame level={3}>
-    <Account />
-  </BrowserFrame>,
-  <BrowserFrame level={4}>
-    <Backoffice />
-  </BrowserFrame>,
-  <BrowserFrame level={5}>
-    <Security />
-  </BrowserFrame>,
-  <BrowserFrame level={6}>
-    <Docs />
-  </BrowserFrame>,
-  <BrowserFrame level={7}>
-    <Admin />
-    <Finale />
-  </BrowserFrame>,
-]
+const LEVEL_CONTENT: Record<number, ReactNode> = {
+  1: <Hero />,
+  2: <Catalog />,
+  3: <Backoffice />,
+  4: (
+    <>
+      <Account />
+      <Security />
+    </>
+  ),
+  5: <Docs />,
+  6: <Explore />,
+  7: (
+    <>
+      <Admin />
+      <Finale />
+    </>
+  ),
+}
+
+const renderSlide = (index: number) =>
+  index === 0 ? (
+    <Intro />
+  ) : (
+    <BrowserFrame level={index}>
+      <LockedSection level={index}>{LEVEL_CONTENT[index]}</LockedSection>
+    </BrowserFrame>
+  )
 
 const slideVariants = {
   enter: (dir: number) => ({ x: dir * 80, opacity: 0 }),
@@ -61,13 +63,11 @@ export default function App() {
   const { completed } = useProgress()
   const path = useHashPath()
 
-  // The finished shop is the reward for passing every level.
   if (completed >= 7 && isShopPath(path)) {
     return (
       <>
         <ShopApp />
         <ViewSwitch to="progress" />
-        <ApiConsole />
       </>
     )
   }
@@ -112,7 +112,7 @@ function ProgressView() {
                 transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
                 className={`absolute inset-0 ${index === 0 ? 'overflow-y-auto' : 'px-3 pb-4 pt-2 sm:px-5 sm:pb-5'}`}
               >
-                {SLIDES[index]}
+                {renderSlide(index)}
               </motion.div>
             </AnimatePresence>
           </div>
@@ -143,7 +143,6 @@ function ProgressView() {
       </AnimatePresence>
 
       {completed >= 7 && <ViewSwitch to="shop" />}
-      <DemoPanel />
       <Celebration />
     </div>
   )

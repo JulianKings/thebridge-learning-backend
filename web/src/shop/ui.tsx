@@ -6,8 +6,6 @@ import { ApiError } from '../api/types'
 import type { Product } from '../api/types'
 import { shopHref } from './router'
 
-// ---- Toasts ----------------------------------------------------------------
-
 type Toast = { id: number; text: string; kind: 'ok' | 'error' }
 let toasts: Toast[] = []
 const toastListeners = new Set<() => void>()
@@ -53,8 +51,6 @@ export function Toaster() {
   )
 }
 
-// ---- States ----------------------------------------------------------------
-
 export function ErrorBox({ error, className = '' }: { error: ApiError; className?: string }) {
   return (
     <div className={`border border-bad bg-bad-soft px-6 py-8 text-center ${className}`}>
@@ -77,8 +73,6 @@ export function GridSkeleton({ n = 8 }: { n?: number }) {
     </div>
   )
 }
-
-// ---- Product card ----------------------------------------------------------
 
 export function ProductCard({ p }: { p: Product }) {
   return (

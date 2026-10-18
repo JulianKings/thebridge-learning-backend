@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { Minus, Plus, X } from 'lucide-react'
 import { useQuery } from '../api/hooks'
-import { api } from '../api/mockApi'
+import { api } from '../api/client'
 import { Garment } from '../components/Garment'
 import { formatPrice } from '../data/mock'
 import { useAuth } from './AuthContext'

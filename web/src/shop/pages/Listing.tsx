@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '../../api/hooks'
-import { api } from '../../api/mockApi'
-import type { ProductQuery } from '../../api/mockApi'
+import { api } from '../../api/client'
+import type { ProductQuery } from '../../api/client'
 import type { Category } from '../../api/types'
 import { ErrorBox, GridSkeleton, ProductCard } from '../ui'
 

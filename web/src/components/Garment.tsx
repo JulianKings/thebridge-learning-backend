@@ -1,6 +1,5 @@
 import type { GarmentKind } from '../data/mock'
 
-// Minimal line-art garments so the mockup needs no stock photography.
 const PATHS: Record<GarmentKind, string> = {
   coat: 'M70 30 L100 22 L130 30 L160 52 L150 150 L138 148 L136 230 L64 230 L62 148 L50 150 L40 52 Z M100 22 L92 120 L100 230 M100 22 L108 120',
   shirt: 'M72 40 L100 32 L128 40 L162 66 L148 96 L134 86 L134 200 L66 200 L66 86 L52 96 L38 66 Z M88 36 L100 52 L112 36 M100 52 L100 200',

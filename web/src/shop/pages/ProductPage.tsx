@@ -1,7 +1,7 @@
 import { ArrowLeft, Pencil } from 'lucide-react'
 import { useState } from 'react'
 import { useQuery } from '../../api/hooks'
-import { api } from '../../api/mockApi'
+import { api } from '../../api/client'
 import { Garment } from '../../components/Garment'
 import { formatPrice } from '../../data/mock'
 import { useAuth } from '../AuthContext'

@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
-import { api, getToken, setToken } from '../api/mockApi'
+import { api, getToken, setToken } from '../api/client'
 import type { User } from '../api/types'
 
 type AuthValue = {
@@ -19,7 +19,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [ready, setReady] = useState(!getToken())
 
-  // Restore the session from a saved token, like a real app on reload.
+  // Restore the session from a token saved by a previous visit.
   useEffect(() => {
     if (!getToken()) return
     api

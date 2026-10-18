@@ -22,12 +22,10 @@ export function ProgressBar({ className = '' }: { className?: string }) {
 }
 
 export function ProgressPanel({ onNavigate }: { onNavigate?: () => void }) {
-  const { completed, running, failedLevel, checks } = useProgress()
+  const { completed, failedLevel, checkCount } = useProgress()
   const [open, setOpen] = useState<number | null>(null)
   const current = Math.min(completed + 1, 7)
-  const expanded = open ?? running ?? failedLevel ?? current
-  const totalChecks = LEVELS.reduce((n, l) => n + l.checks.length, 0)
-  const passedChecks = Object.values(checks).reduce((n, c) => n + Object.values(c).filter((s) => s === 'pass').length, 0)
+  const expanded = open ?? failedLevel ?? current
 
   return (
     <div className="flex h-full flex-col font-fx text-fx-text">
@@ -48,7 +46,7 @@ export function ProgressPanel({ onNavigate }: { onNavigate?: () => void }) {
             {completed >= 7 ? <span className="fx-gradient-text">¡Completado!</span> : LEVELS[completed].title}
           </p>
           <p className="mt-1 text-xs text-fx-muted">
-            {passedChecks}/{totalChecks} checks superados
+            {checkCount.passed}/{checkCount.total} checks superados
           </p>
         </div>
       </div>
@@ -97,7 +95,11 @@ export function ProgressPanel({ onNavigate }: { onNavigate?: () => void }) {
                     exit={{ height: 0, opacity: 0 }}
                     className="px-4 pb-4"
                   >
-                    <CheckList level={l} compact />
+                    {l.checks.length ? (
+                      <CheckList level={l} compact />
+                    ) : (
+                      <p className="text-xs text-fx-muted">Checks próximamente.</p>
+                    )}
                   </motion.div>
                 )}
               </AnimatePresence>

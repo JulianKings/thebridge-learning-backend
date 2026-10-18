@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '../../api/hooks'
-import { api, decodeToken, getToken } from '../../api/mockApi'
+import { api, decodeToken, getToken } from '../../api/client'
 import { formatPrice } from '../../data/mock'
 import { useAuth } from '../AuthContext'
 import { navigate, shopHref } from '../router'

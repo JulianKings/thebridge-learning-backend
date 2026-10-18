@@ -1,154 +1,169 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { LEVELS } from '../levels/levels'
+import { LEVELS, request } from '../levels/levels'
+import type { ApiResponse, CheckContext } from '../levels/levels'
 
 export type CheckStatus = 'idle' | 'running' | 'pass' | 'fail'
-export type Role = 'invitado' | 'cliente' | 'trabajador' | 'encargado'
-
-type CheckState = Record<number, Record<string, CheckStatus>>
+export type CheckResult = { status: CheckStatus; message?: string }
+type Results = Record<number, Record<string, CheckResult>>
 
 type ProgressValue = {
   completed: number
-  checks: CheckState
-  running: number | null
+  results: Results
+  checkCount: { passed: number; total: number }
+  running: boolean
   failedLevel: number | null
+  checkedAt: Date | null
+  statusResponse: ApiResponse | null
   celebrate: number | null
-  role: Role
   editorial: boolean
   isUnlocked: (level: number) => boolean
-  simulateNext: (opts?: { fail?: boolean }) => void
-  jumpTo: (level: number) => void
-  reset: () => void
+  runChecks: () => void
   dismissCelebration: () => void
-  setRole: (role: Role) => void
   setEditorial: (on: boolean) => void
 }
 
-const STORAGE_KEY = 'hilo-progress-v1'
-const CHECK_DELAY = 650
+const CELEBRATED_KEY = 'hilo-celebrated'
+const EDITORIAL_KEY = 'hilo-editorial'
+const POLL_MS = 30_000
+const EDITORIAL_LEVEL = 5
 
 const ProgressContext = createContext<ProgressValue | null>(null)
 
-function checksUpTo(level: number): CheckState {
-  const state: CheckState = {}
-  for (const l of LEVELS) {
-    state[l.id] = Object.fromEntries(l.checks.map((c) => [c.id, l.id <= level ? 'pass' : 'idle']))
-  }
-  return state
-}
+const idleResults = (): Results =>
+  Object.fromEntries(LEVELS.map((l) => [l.id, Object.fromEntries(l.checks.map((c) => [c.id, { status: 'idle' }]))]))
 
-function roleFor(level: number): Role {
-  return level >= 7 ? 'encargado' : level >= 4 ? 'trabajador' : level >= 3 ? 'cliente' : 'invitado'
-}
-
-function loadSaved(): { completed: number; role: Role; editorial: boolean } {
-  // ?nivel=N opens the demo at a given level (handy for bookmarking each stage).
-  const param = new URLSearchParams(location.search).get('nivel')
-  if (param !== null) {
-    const level = Math.max(0, Math.min(7, Number(param) || 0))
-    return { completed: level, role: roleFor(level), editorial: level >= 6 }
-  }
+function readNumber(key: string) {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw) return { completed: 0, role: 'invitado', editorial: false, ...JSON.parse(raw) }
+    return Number(localStorage.getItem(key)) || 0
   } catch {
-    // Storage unavailable: start fresh.
+    return 0
   }
-  return { completed: 0, role: 'invitado', editorial: false }
 }
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+function write(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value)
+  } catch {
+    // Without storage the celebration may repeat on reload; harmless.
+  }
+}
 
 export function ProgressProvider({ children }: { children: ReactNode }) {
-  const saved = useMemo(loadSaved, [])
-  const [completed, setCompleted] = useState(saved.completed)
-  const [checks, setChecks] = useState<CheckState>(() => checksUpTo(saved.completed))
-  const [running, setRunning] = useState<number | null>(null)
+  const [results, setResults] = useState<Results>(idleResults)
+  const [completed, setCompleted] = useState(0)
+  const [running, setRunning] = useState(false)
   const [failedLevel, setFailedLevel] = useState<number | null>(null)
+  const [checkedAt, setCheckedAt] = useState<Date | null>(null)
+  const [statusResponse, setStatusResponse] = useState<ApiResponse | null>(null)
   const [celebrate, setCelebrate] = useState<number | null>(null)
-  const [role, setRole] = useState<Role>(saved.role)
-  const [editorial, setEditorial] = useState(saved.editorial)
-  const runId = useRef(0)
+  const [editorialPref, setEditorialPref] = useState(() => readNumber(EDITORIAL_KEY) === 1)
+  const busy = useRef(false)
+
+  const runChecks = useCallback(async () => {
+    if (busy.current) return
+    busy.current = true
+    setRunning(true)
+
+    const cache = new Map<string, Promise<ApiResponse>>()
+    const ctx: CheckContext = {
+      get: (path) => {
+        if (!cache.has(path)) cache.set(path, request(path))
+        return cache.get(path)!
+      },
+    }
+    const setCheck = (level: number, id: string, result: CheckResult) =>
+      setResults((prev) => ({ ...prev, [level]: { ...prev[level], [id]: result } }))
+
+    // Levels unlock in order: once one fails (or has no checks yet), the rest stay idle.
+    let passed = 0
+    let failed: number | null = null
+    let blocked = false
+    for (const level of LEVELS) {
+      if (blocked || level.checks.length === 0) {
+        level.checks.forEach((c) => setCheck(level.id, c.id, { status: 'idle' }))
+        blocked = true
+        continue
+      }
+      // Within a level, stop at the first failure so students fix one thing at a time.
+      let levelOk = true
+      for (const check of level.checks) {
+        if (!levelOk) {
+          setCheck(level.id, check.id, { status: 'idle' })
+          continue
+        }
+        setCheck(level.id, check.id, { status: 'running' })
+        try {
+          await check.run(ctx)
+          setCheck(level.id, check.id, { status: 'pass' })
+        } catch (e) {
+          levelOk = false
+          setCheck(level.id, check.id, { status: 'fail', message: e instanceof Error ? e.message : String(e) })
+        }
+      }
+      if (levelOk) {
+        passed = level.id
+      } else {
+        failed = level.id
+        blocked = true
+      }
+    }
+
+    setStatusResponse(await ctx.get('/api/status').catch(() => null))
+    setCompleted(passed)
+    setFailedLevel(failed)
+    setCheckedAt(new Date())
+    if (passed > readNumber(CELEBRATED_KEY)) {
+      write(CELEBRATED_KEY, String(passed))
+      setCelebrate(passed)
+      if (passed >= EDITORIAL_LEVEL) {
+        setEditorialPref(true)
+        write(EDITORIAL_KEY, '1')
+      }
+    }
+    setRunning(false)
+    busy.current = false
+  }, [])
 
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ completed, role, editorial }))
-    } catch {
-      // Ignore: persistence is a convenience only.
+    runChecks()
+    const poll = setInterval(() => document.visibilityState === 'visible' && runChecks(), POLL_MS)
+    window.addEventListener('focus', runChecks)
+    return () => {
+      clearInterval(poll)
+      window.removeEventListener('focus', runChecks)
     }
-  }, [completed, role, editorial])
+  }, [runChecks])
+
+  // The editorial theme is a level-5 reward, so it switches off if the API regresses.
+  const editorial = editorialPref && completed >= EDITORIAL_LEVEL
 
   useEffect(() => {
     document.documentElement.dataset.editorial = editorial ? 'on' : 'off'
   }, [editorial])
 
-  const setCheck = (level: number, id: string, status: CheckStatus) =>
-    setChecks((prev) => ({ ...prev, [level]: { ...prev[level], [id]: status } }))
-
-  const simulateNext = useCallback(
-    async ({ fail = false }: { fail?: boolean } = {}) => {
-      const level = LEVELS.find((l) => l.id === completed + 1)
-      if (!level || running) return
-      const myRun = ++runId.current
-      setRunning(level.id)
-      setFailedLevel(null)
-      setChecks((prev) => ({
-        ...prev,
-        [level.id]: Object.fromEntries(level.checks.map((c) => [c.id, 'idle'])),
-      }))
-      const failAt = fail ? Math.min(2, level.checks.length - 1) : -1
-
-      for (const [i, check] of level.checks.entries()) {
-        setCheck(level.id, check.id, 'running')
-        await sleep(CHECK_DELAY)
-        if (runId.current !== myRun) return
-        if (i === failAt) {
-          setCheck(level.id, check.id, 'fail')
-          setFailedLevel(level.id)
-          setRunning(null)
-          return
-        }
-        setCheck(level.id, check.id, 'pass')
-      }
-
-      await sleep(300)
-      if (runId.current !== myRun) return
-      setRunning(null)
-      setCompleted(level.id)
-      setCelebrate(level.id)
-      if (level.id === 3) setRole('cliente')
-      if (level.id === 4) setRole('trabajador')
-      if (level.id === 6) setEditorial(true)
-    },
-    [completed, running],
-  )
-
-  const jumpTo = useCallback((level: number) => {
-    runId.current++
-    setRunning(null)
-    setFailedLevel(null)
-    setCelebrate(null)
-    setCompleted(level)
-    setChecks(checksUpTo(level))
-    setRole(roleFor(level))
-    setEditorial(level >= 6)
-  }, [])
+  const checkCount = {
+    passed: Object.values(results).reduce((n, level) => n + Object.values(level).filter((r) => r.status === 'pass').length, 0),
+    total: LEVELS.reduce((n, l) => n + l.checks.length, 0),
+  }
 
   const value: ProgressValue = {
     completed,
-    checks,
+    results,
+    checkCount,
     running,
     failedLevel,
+    checkedAt,
+    statusResponse,
     celebrate,
-    role,
     editorial,
     isUnlocked: (level) => completed >= level,
-    simulateNext,
-    jumpTo,
-    reset: () => jumpTo(0),
+    runChecks,
     dismissCelebration: () => setCelebrate(null),
-    setRole,
-    setEditorial,
+    setEditorial: (on) => {
+      setEditorialPref(on)
+      write(EDITORIAL_KEY, on ? '1' : '0')
+    },
   }
 
   return <ProgressContext.Provider value={value}>{children}</ProgressContext.Provider>

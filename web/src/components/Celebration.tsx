@@ -10,10 +10,10 @@ import { goToSlide } from '../slides/slides'
 const MESSAGES: Record<number, string> = {
   1: '¡Tu servidor está vivo!',
   2: '¡Tus datos ya están en el escaparate!',
-  3: '¡Ya sabes quién entra en tu tienda!',
-  4: '¡Tu equipo ya puede gestionar el catálogo!',
-  5: '¡Tu API es segura!',
-  6: '¡Documentación impecable!',
+  3: '¡Tu equipo ya puede gestionar el catálogo!',
+  4: '¡Tu API es segura!',
+  5: '¡Documentación impecable!',
+  6: '¡Una API pulida y profesional!',
   7: '¡Tienda terminada!',
 }
 
@@ -36,7 +36,6 @@ export function Celebration() {
   }, [celebrate])
 
   const close = () => {
-    // Passing the last level opens the finished shop.
     if (def?.id === 7) location.hash = 'tienda'
     else if (def) goToSlide(def.id)
     dismissCelebration()
@@ -65,7 +64,6 @@ export function Celebration() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="relative overflow-hidden rounded-[27px] bg-fx-card px-8 pb-10 pt-12 text-center text-fx-text sm:px-12">
-              {/* Rotating light rays behind the badge. */}
               <motion.div
                 aria-hidden="true"
                 className="absolute left-1/2 top-[-140px] h-[420px] w-[420px] -translate-x-1/2 rounded-full opacity-40"
