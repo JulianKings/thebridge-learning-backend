@@ -149,4 +149,5 @@ vite.config.ts.timestamp-*
 .turbo
 
 # Custom
-api/thebridge-learning-backend-api/
+api/*
+!web/src/api/*
