@@ -149,5 +149,5 @@ vite.config.ts.timestamp-*
 .turbo
 
 # Custom
-api/*
-!web/src/api/*
+# The API lives in its own repository (root folder only; web/src/api is unaffected)
+/api/
