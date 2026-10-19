@@ -12,9 +12,9 @@ export function Header({ onOpenProgress }: { onOpenProgress: () => void }) {
       <div className="mx-auto flex h-16 max-w-[1400px] items-center gap-4 px-4 sm:px-6">
         <a href="#inicio" className="flex items-center gap-3">
           <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-fx-card-2 text-lg font-bold ring-1 ring-white/10">
-            <span className="fx-gradient-text">H</span>
+            <span className="fx-gradient-text">A</span>
           </span>
-          <span className="text-xl font-bold tracking-[0.2em]">HILO</span>
+          <span className="whitespace-nowrap text-xl font-bold tracking-wide">API TheBridge</span>
           <span className="hidden rounded-full border border-fx-line bg-white/5 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-widest text-fx-muted sm:inline">
             Backend Quest
           </span>
