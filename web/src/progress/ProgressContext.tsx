@@ -26,7 +26,7 @@ type ProgressValue = {
 const CELEBRATED_KEY = 'hilo-celebrated'
 const EDITORIAL_KEY = 'hilo-editorial'
 const POLL_MS = 30_000
-const EDITORIAL_LEVEL = 5
+const EDITORIAL_LEVEL = 4
 
 const ProgressContext = createContext<ProgressValue | null>(null)
 
@@ -59,18 +59,19 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
   const [celebrate, setCelebrate] = useState<number | null>(null)
   const [editorialPref, setEditorialPref] = useState(() => readNumber(EDITORIAL_KEY) === 1)
   const busy = useRef(false)
+  const lastWriteOutcome = useRef<Record<number, boolean>>({})
 
-  const runChecks = useCallback(async () => {
+  // Background runs (poll, window focus) pass `writes: false`: levels that create
+  // test data keep their last outcome instead of hitting the database again.
+  const run = useCallback(async ({ writes }: { writes: boolean }) => {
     if (busy.current) return
     busy.current = true
     setRunning(true)
 
     const cache = new Map<string, Promise<ApiResponse>>()
-    const ctx: CheckContext = {
-      get: (path) => {
-        if (!cache.has(path)) cache.set(path, request(path))
-        return cache.get(path)!
-      },
+    const get = (path: string) => {
+      if (!cache.has(path)) cache.set(path, request(path))
+      return cache.get(path)!
     }
     const setCheck = (level: number, id: string, result: CheckResult) =>
       setResults((prev) => ({ ...prev, [level]: { ...prev[level], [id]: result } }))
@@ -85,6 +86,18 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
         blocked = true
         continue
       }
+      const reuse = level.writes && !writes && level.id in lastWriteOutcome.current
+      if (reuse) {
+        if (lastWriteOutcome.current[level.id]) {
+          passed = level.id
+        } else {
+          failed = level.id
+          blocked = true
+        }
+        continue
+      }
+
+      const ctx: CheckContext = { get, send: (method, path, body) => request(path, method, body), state: {} }
       // Within a level, stop at the first failure so students fix one thing at a time.
       let levelOk = true
       for (const check of level.checks) {
@@ -101,6 +114,8 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
           setCheck(level.id, check.id, { status: 'fail', message: e instanceof Error ? e.message : String(e) })
         }
       }
+      await level.cleanup?.(ctx).catch(() => {})
+      if (level.writes) lastWriteOutcome.current[level.id] = levelOk
       if (levelOk) {
         passed = level.id
       } else {
@@ -109,7 +124,7 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    setStatusResponse(await ctx.get('/api/status').catch(() => null))
+    setStatusResponse(await get('/status').catch(() => null))
     setCompleted(passed)
     setFailedLevel(failed)
     setCheckedAt(new Date())
@@ -125,17 +140,22 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
     busy.current = false
   }, [])
 
+  const runChecks = useCallback(() => {
+    run({ writes: true })
+  }, [run])
+
   useEffect(() => {
     runChecks()
-    const poll = setInterval(() => document.visibilityState === 'visible' && runChecks(), POLL_MS)
-    window.addEventListener('focus', runChecks)
+    const background = () => run({ writes: false })
+    const poll = setInterval(() => document.visibilityState === 'visible' && background(), POLL_MS)
+    window.addEventListener('focus', background)
     return () => {
       clearInterval(poll)
-      window.removeEventListener('focus', runChecks)
+      window.removeEventListener('focus', background)
     }
-  }, [runChecks])
+  }, [run, runChecks])
 
-  // The editorial theme is a level-5 reward, so it switches off if the API regresses.
+  // The editorial theme is a level-4 reward, so it switches off if the API regresses.
   const editorial = editorialPref && completed >= EDITORIAL_LEVEL
 
   useEffect(() => {

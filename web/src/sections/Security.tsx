@@ -39,7 +39,7 @@ export function Security() {
 
   return (
     <div className="px-4 py-16 sm:px-8">
-      <SectionHeading level={4} title="Sesión segura">
+      <SectionHeading level={5} title="Sesión segura">
         <span className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-ok">
           <ShieldCheck className="h-4 w-4" /> Rutas protegidas
         </span>

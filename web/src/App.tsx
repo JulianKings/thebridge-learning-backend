@@ -21,6 +21,7 @@ import { Intro } from './sections/Intro'
 import { Security } from './sections/Security'
 import { isShopPath, useHashPath } from './shop/router'
 import { ShopApp } from './shop/ShopApp'
+import { Toaster } from './shop/ui'
 import { SlideNav } from './slides/SlideNav'
 import { goToSlide, useSlide } from './slides/slides'
 
@@ -28,13 +29,13 @@ const LEVEL_CONTENT: Record<number, ReactNode> = {
   1: <Hero />,
   2: <Catalog />,
   3: <Backoffice />,
-  4: (
+  4: <Docs />,
+  5: (
     <>
       <Account />
       <Security />
     </>
   ),
-  5: <Docs />,
   6: <Explore />,
   7: (
     <>
@@ -144,6 +145,7 @@ function ProgressView() {
 
       {completed >= 7 && <ViewSwitch to="shop" />}
       <Celebration />
+      <Toaster />
     </div>
   )
 }

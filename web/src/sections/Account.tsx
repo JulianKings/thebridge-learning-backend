@@ -10,7 +10,7 @@ const inputCls = 'w-full border-b border-line bg-transparent py-2.5 text-sm outl
 export function Account() {
   return (
     <div className="px-4 py-16 sm:px-8">
-      <SectionHeading level={4} title="Mi cuenta" />
+      <SectionHeading level={5} title="Mi cuenta" />
       <div className="grid gap-10 lg:grid-cols-2">
         <form onSubmit={(e) => e.preventDefault()} className="max-w-md space-y-5">
           <p className="pb-1 text-[11px] uppercase tracking-[0.18em]">Iniciar sesión</p>

@@ -11,8 +11,8 @@ const MESSAGES: Record<number, string> = {
   1: '¡Tu servidor está vivo!',
   2: '¡Tus datos ya están en el escaparate!',
   3: '¡Tu equipo ya puede gestionar el catálogo!',
-  4: '¡Tu API es segura!',
-  5: '¡Documentación impecable!',
+  4: '¡Documentación impecable!',
+  5: '¡Tu API es segura!',
   6: '¡Una API pulida y profesional!',
   7: '¡Tienda terminada!',
 }

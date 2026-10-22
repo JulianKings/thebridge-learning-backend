@@ -1,7 +1,7 @@
 // Placeholder data for the blurred previews. Once the students' API passes a
 // level, the matching section will read from the API instead.
 
-export type GarmentKind = 'coat' | 'shirt' | 'dress' | 'trousers' | 'knit' | 'skirt' | 'tee' | 'blazer'
+export type GarmentKind = 'coat' | 'shirt' | 'dress' | 'trousers' | 'knit' | 'skirt' | 'tee' | 'blazer' | 'shoe' | 'hat' | 'accessory'
 
 export type Product = {
   id: string

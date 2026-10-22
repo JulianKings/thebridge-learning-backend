@@ -1,26 +1,27 @@
 import { ChevronLeft, ChevronRight, Search } from 'lucide-react'
 import { useState } from 'react'
-import { PRODUCTS } from '../data/mock'
-import { ProductTile } from './Catalog'
+import { MOCK_ROPA } from '../ropa/mock'
+import { ProductoTile } from '../ropa/ProductoTile'
+import { titulo } from '../ropa/types'
 import { SectionHeading } from './SectionHeading'
 
 const PAGE_SIZE = 4
-const CATEGORIES = ['Mujer', 'Hombre', 'Unisex'] as const
+const TEMPORADAS = [...new Set(MOCK_ROPA.map((p) => p.temporada))]
 
 export function Explore() {
   const [search, setSearch] = useState('')
-  const [category, setCategory] = useState<string | null>(null)
+  const [temporada, setTemporada] = useState<string | null>(null)
   const [page, setPage] = useState(0)
 
-  const results = PRODUCTS.filter(
-    (p) => (!category || p.category === category) && p.name.toLowerCase().includes(search.toLowerCase()),
+  const results = MOCK_ROPA.filter(
+    (p) => (!temporada || p.temporada === temporada) && titulo(p).toLowerCase().includes(search.toLowerCase()),
   )
   const pages = Math.max(1, Math.ceil(results.length / PAGE_SIZE))
   const current = Math.min(page, pages - 1)
   const visible = results.slice(current * PAGE_SIZE, (current + 1) * PAGE_SIZE)
   const query = new URLSearchParams({
     ...(search && { search }),
-    ...(category && { category }),
+    ...(temporada && { temporada }),
     page: String(current + 1),
     limit: String(PAGE_SIZE),
   })
@@ -43,25 +44,25 @@ export function Explore() {
           />
         </label>
         <div className="flex gap-2">
-          {CATEGORIES.map((c) => (
+          {TEMPORADAS.map((c) => (
             <button
               key={c}
               onClick={() => {
-                setCategory(category === c ? null : c)
+                setTemporada(temporada === c ? null : c)
                 setPage(0)
               }}
-              className={`border px-3 py-1.5 text-[11px] uppercase tracking-[0.15em] ${category === c ? 'border-ink bg-ink text-paper' : 'border-line hover:border-ink'}`}
+              className={`border px-3 py-1.5 text-[11px] uppercase tracking-[0.15em] ${temporada === c ? 'border-ink bg-ink text-paper' : 'border-line hover:border-ink'}`}
             >
               {c}
             </button>
           ))}
         </div>
       </div>
-      <p className="mt-3 font-mono text-[11px] text-muted">GET /api/products?{query.toString()}</p>
+      <p className="mt-3 font-mono text-[11px] text-muted">GET /ropa?{query.toString()}</p>
 
       <div className="mt-8 grid grid-cols-2 gap-x-4 gap-y-10 md:grid-cols-4">
         {visible.map((p) => (
-          <ProductTile key={p.id} p={p} />
+          <ProductoTile key={p._id} p={p} />
         ))}
       </div>
       {results.length === 0 && <p className="py-16 text-center font-display text-2xl text-muted">No hay prendas que coincidan.</p>}

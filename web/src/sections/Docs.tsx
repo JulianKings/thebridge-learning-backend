@@ -7,26 +7,22 @@ type Endpoint = { m: 'GET' | 'POST' | 'PUT' | 'DELETE'; path: string; desc: stri
 
 const GROUPS: { name: string; endpoints: Endpoint[] }[] = [
   {
-    name: 'Auth',
+    name: 'Estado',
+    endpoints: [{ m: 'GET', path: '/status', desc: 'Estado de la API y de la base de datos', example: '{ "status": "ok", "db": "conectada" }' }],
+  },
+  {
+    name: 'Ropa',
     endpoints: [
-      { m: 'POST', path: '/api/auth/register', desc: 'Crea una cuenta de cliente', example: '{ "user": { "id": "u5", "role": "cliente" } }' },
-      { m: 'POST', path: '/api/auth/login', desc: 'Devuelve un JWT', example: '{ "token": "eyJhbGciOi…" }' },
+      { m: 'GET', path: '/ropa', desc: 'Lista el catálogo', example: '[{ "_id": "6718…", "tipo": "sudadera", "precio": 39.95 }]' },
+      { m: 'GET', path: '/ropa/{id}', desc: 'Una prenda con su proveedor', example: '{ "_id": "6718…", "proveedor": { "nombreComercial": "Textiles Navarra" } }' },
+      { m: 'POST', path: '/ropa', desc: 'Crea una prenda', auth: true, example: '201 Created' },
+      { m: 'PUT', path: '/ropa/{id}', desc: 'Edita una prenda', auth: true, example: '{ "_id": "6718…", "precio": 49.95 }' },
+      { m: 'DELETE', path: '/ropa/{id}', desc: 'Elimina una prenda', auth: true, example: '204 No Content' },
     ],
   },
   {
-    name: 'Products',
-    endpoints: [
-      { m: 'GET', path: '/api/products', desc: 'Lista el catálogo', example: '[{ "id": "p1", "name": "Abrigo de lana cruda", "price": 189 }]' },
-      { m: 'POST', path: '/api/products', desc: 'Crea una prenda', auth: true, example: '{ "id": "p9", "name": "Sudadera de felpa" }' },
-      { m: 'PUT', path: '/api/products/{id}', desc: 'Edita una prenda', auth: true, example: '{ "id": "p1", "price": 169 }' },
-      { m: 'DELETE', path: '/api/products/{id}', desc: 'Elimina una prenda', auth: true, example: '204 No Content' },
-    ],
-  },
-  {
-    name: 'Supplies',
-    endpoints: [
-      { m: 'GET', path: '/api/supplies', desc: 'Lista los materiales', auth: true, example: '[{ "id": "s1", "name": "Lana merino", "stock": 240 }]' },
-    ],
+    name: 'Proveedores',
+    endpoints: [{ m: 'GET', path: '/proveedores', desc: 'Lista los proveedores', example: '[{ "_id": "6717…", "nombreComercial": "Textiles Navarra" }]' }],
   },
 ]
 
@@ -39,11 +35,11 @@ const METHOD_CLS: Record<Endpoint['m'], string> = {
 
 export function Docs() {
   const { editorial, setEditorial } = useProgress()
-  const [open, setOpen] = useState<string | null>('GET /api/products')
+  const [open, setOpen] = useState<string | null>('GET /ropa')
 
   return (
     <div className="px-4 py-16 sm:px-8">
-      <SectionHeading level={5} title="Documentación de la API">
+      <SectionHeading level={4} title="Documentación de la API">
         <span className="font-mono text-xs text-muted">OpenAPI 3.0 · /api-docs</span>
       </SectionHeading>
 
@@ -80,7 +76,7 @@ export function Docs() {
         </div>
 
         <aside className="self-start border border-accent p-6 sm:p-8">
-          <p className="eyebrow">Recompensa del nivel 5</p>
+          <p className="eyebrow">Recompensa del nivel 4</p>
           <p className="mt-3 font-display text-3xl leading-tight">Modo editorial</p>
           <p className="mt-3 text-sm leading-relaxed text-muted">
             Una API bien documentada merece una tienda a su altura. Paleta nocturna, detalles dorados y un nuevo

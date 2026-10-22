@@ -14,7 +14,7 @@
   --panel: #ffffff;
 }
 
-/* Editorial theme, the level 5 reward. */
+/* Editorial theme, the level 4 reward. */
 :root[data-editorial='on'] {
   --paper: #0f0e0d;
   --paper-2: #1a1917;

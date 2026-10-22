@@ -51,7 +51,7 @@ export function Intro() {
           </div>
           <div className="space-y-2 p-5 leading-relaxed">
             <p>
-              <span className="text-fx-pink">$</span> curl {API_URL}/api/status
+              <span className="text-fx-pink">$</span> curl {API_URL}/status
             </p>
             {statusResponse ? (
               <>

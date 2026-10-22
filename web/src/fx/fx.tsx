@@ -7,8 +7,8 @@ export const LEVEL_ICONS: Record<number, LucideIcon> = {
   1: Plug,
   2: Database,
   3: PencilRuler,
-  4: KeyRound,
-  5: BookOpen,
+  4: BookOpen,
+  5: KeyRound,
   6: SlidersHorizontal,
   7: Store,
 }
@@ -17,8 +17,8 @@ export const LEVEL_URLS: Record<number, string> = {
   1: 'hilo.store',
   2: 'hilo.store/coleccion',
   3: 'hilo.store/panel',
-  4: 'hilo.store/cuenta',
-  5: 'hilo.store/api-docs',
+  4: 'hilo.store/api-docs',
+  5: 'hilo.store/cuenta',
   6: 'hilo.store/buscar',
   7: 'hilo.store/gestion',
 }

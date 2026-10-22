@@ -50,7 +50,7 @@ export function Hero() {
           </div>
         ))}
       </dl>
-      <p className="px-4 py-3 font-mono text-[11px] text-muted sm:px-8">{API_URL}/api/status</p>
+      <p className="px-4 py-3 font-mono text-[11px] text-muted sm:px-8">{API_URL}/status</p>
     </>
   )
 }
