@@ -6,7 +6,7 @@ import { createPortal } from 'react-dom'
 import { btnPrimary, field, toast, toastError } from '../shop/ui'
 import { ropaApi } from './api'
 import { ProductoImage } from './ProductoImage'
-import { MAX_DESCUENTO, TALLAS, TIPOS } from './types'
+import { MAX_DESCUENTO, TALLAS, TIPOS, nombreTipo } from './types'
 import type { Producto, ProductoInput, Proveedor, TallaTipo, Tipo } from './types'
 
 const TEMPORADAS = ['Primavera-Verano', 'Otoño-Invierno', 'Todo el año']
@@ -105,7 +105,7 @@ export function ProductoEditor({ producto, proveedores, onClose }: Props) {
               {(id) => (
                 <select id={id} className={field} value={p.tipo} onChange={(e) => set({ tipo: e.target.value as Tipo })}>
                   {TIPOS.map((t) => (
-                    <option key={t} value={t} className="bg-paper">{t}</option>
+                    <option key={t} value={t} className="bg-paper">{nombreTipo(t)}</option>
                   ))}
                 </select>
               )}

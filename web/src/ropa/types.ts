@@ -1,9 +1,11 @@
+// Must match the enum in the API's Producto model exactly.
 export const TIPOS = [
-  'camiseta', 'camisa', 'polo', 'sudadera', 'jersey', 'chaqueta', 'abrigo', 'chaleco', 'pantalón', 'vaqueros',
-  'pantalón corto', 'bermudas', 'leggings', 'falda', 'vestido', 'mono', 'traje', 'blazer', 'ropa interior',
-  'calcetines', 'pijama', 'bañador', 'bikini', 'ropa deportiva', 'chándal', 'mallas_deportivas', 'zapatillas',
-  'zapatos', 'botas', 'sandalias', 'chanclas', 'gorra', 'sombrero', 'bufanda', 'guantes', 'cinturón', 'corbata',
-  'pajarita',
+  'camiseta', 'camisa', 'polo', 'sudadera', 'jersey', 'chaqueta', 'abrigo', 'chaleco',
+  'pantalon', 'vaqueros', 'pantalon_corto', 'bermudas', 'leggings', 'falda', 'vestido',
+  'mono', 'traje', 'blazer', 'ropa_interior', 'calcetines', 'pijama', 'bañador', 'bikini',
+  'ropa_deportiva', 'chandal', 'mallas_deportivas', 'zapatillas', 'zapatos', 'botas',
+  'sandalias', 'chanclas', 'gorra', 'sombrero', 'bufanda', 'guantes', 'cinturon',
+  'corbata', 'pajarita',
 ] as const
 
 export const TALLAS = ['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'] as const
@@ -11,6 +13,10 @@ export const TALLAS = ['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'] as const
 export const MAX_DESCUENTO = 90
 
 export type Tipo = (typeof TIPOS)[number]
+
+const ACENTOS: Partial<Record<Tipo, string>> = { pantalon: 'pantalón', pantalon_corto: 'pantalón corto', chandal: 'chándal', cinturon: 'cinturón' }
+
+export const nombreTipo = (tipo: Tipo) => ACENTOS[tipo] ?? tipo.replace(/_/g, ' ')
 export type TallaTipo = (typeof TALLAS)[number]
 
 export type Talla = { talla_tipo: TallaTipo; talla_stock: number }
@@ -18,12 +24,12 @@ export type Talla = { talla_tipo: TallaTipo; talla_stock: number }
 export type Proveedor = {
   _id: string
   nombreComercial: string
-  cp: number
+  cp: string
   email: string
   telefono: number
   web: string
   tipoProducto: string[]
-  Divisa: string
+  divisa: string
   condicionesPago: string
   condicionesDevolucion: string
   descuentosVolumen: number
@@ -46,7 +52,8 @@ export type Producto = {
 export type ProductoInput = Omit<Producto, '_id' | 'proveedor'> & { proveedor: string }
 
 export const titulo = (p: Pick<Producto, 'tipo' | 'temporada'>) => {
-  const tipo = `${p.tipo.charAt(0).toUpperCase()}${p.tipo.slice(1).replace(/_/g, ' ')}`
+  const nombre = nombreTipo(p.tipo)
+  const tipo = `${nombre.charAt(0).toUpperCase()}${nombre.slice(1)}`
   return p.temporada ? `${tipo} · ${p.temporada}` : tipo
 }
 
@@ -60,16 +67,19 @@ export type Grupo = (typeof GRUPOS)[number]
 const GRUPO_DE: Partial<Record<Tipo, Grupo>> = {
   camiseta: 'Parte de arriba', camisa: 'Parte de arriba', polo: 'Parte de arriba', sudadera: 'Parte de arriba', jersey: 'Parte de arriba',
   chaqueta: 'Parte de arriba', abrigo: 'Parte de arriba', chaleco: 'Parte de arriba', blazer: 'Parte de arriba',
-  pantalón: 'Parte de abajo', vaqueros: 'Parte de abajo', 'pantalón corto': 'Parte de abajo', bermudas: 'Parte de abajo', leggings: 'Parte de abajo', falda: 'Parte de abajo',
+  pantalon: 'Parte de abajo', vaqueros: 'Parte de abajo', pantalon_corto: 'Parte de abajo', bermudas: 'Parte de abajo', leggings: 'Parte de abajo', falda: 'Parte de abajo',
   vestido: 'Vestidos y conjuntos', mono: 'Vestidos y conjuntos', traje: 'Vestidos y conjuntos',
   zapatillas: 'Calzado', zapatos: 'Calzado', botas: 'Calzado', sandalias: 'Calzado', chanclas: 'Calzado',
-  gorra: 'Accesorios', sombrero: 'Accesorios', bufanda: 'Accesorios', guantes: 'Accesorios', cinturón: 'Accesorios', corbata: 'Accesorios', pajarita: 'Accesorios',
+  gorra: 'Accesorios', sombrero: 'Accesorios', bufanda: 'Accesorios', guantes: 'Accesorios', cinturon: 'Accesorios', corbata: 'Accesorios', pajarita: 'Accesorios',
 }
 
 export const grupoDe = (tipo: Tipo): Grupo => GRUPO_DE[tipo] ?? 'Más'
 
-export const nombreProveedor = (p: Pick<Producto, 'proveedor'>) =>
-  typeof p.proveedor === 'object' && p.proveedor ? p.proveedor.nombreComercial : null
+// `proveedor` comes back as an ObjectId unless the API populates it, so fall back to the list.
+export const nombreProveedor = (p: Pick<Producto, 'proveedor'>, proveedores: Proveedor[] = []) =>
+  typeof p.proveedor === 'object' && p.proveedor
+    ? p.proveedor.nombreComercial
+    : (proveedores.find((pr) => pr._id === p.proveedor)?.nombreComercial ?? null)
 
 // Level 2 only requires tipo and precio, so documents inserted by hand may lack the rest.
 export function normalizeProducto(raw: Partial<Producto> & Pick<Producto, '_id'>): Producto {

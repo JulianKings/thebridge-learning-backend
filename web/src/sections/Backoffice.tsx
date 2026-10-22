@@ -9,15 +9,10 @@ import { ropaApi } from '../ropa/api'
 import { MOCK_PROVEEDORES, MOCK_ROPA } from '../ropa/mock'
 import { ProductoEditor } from '../ropa/ProductoEditor'
 import { ProductoImage } from '../ropa/ProductoImage'
-import { precioFinal, stockTotal, titulo } from '../ropa/types'
+import { nombreProveedor, precioFinal, stockTotal, titulo } from '../ropa/types'
 import type { Producto, Proveedor } from '../ropa/types'
 import { ErrorBox, toast, toastError } from '../shop/ui'
 import { SectionHeading } from './SectionHeading'
-
-const proveedorDe = (p: Producto, proveedores: Proveedor[]) =>
-  typeof p.proveedor === 'object' && p.proveedor
-    ? p.proveedor.nombreComercial
-    : (proveedores.find((pr) => pr._id === p.proveedor)?.nombreComercial ?? '—')
 
 function Table({ ropa, proveedores, onEdit, onDelete }: {
   ropa: Producto[]
@@ -50,7 +45,7 @@ function Table({ ropa, proveedores, onEdit, onDelete }: {
                   </span>
                 </div>
               </td>
-              <td className="text-muted">{proveedorDe(p, proveedores)}</td>
+              <td className="text-muted">{nombreProveedor(p, proveedores) ?? '—'}</td>
               <td>
                 {formatPrice(precioFinal(p))}
                 {p.descuento > 0 && <span className="ml-1.5 text-xs text-bad">-{p.descuento}%</span>}

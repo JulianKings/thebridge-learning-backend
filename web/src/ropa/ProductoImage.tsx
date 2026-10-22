@@ -4,12 +4,12 @@ import type { GarmentKind } from '../data/mock'
 import type { Tipo } from './types'
 
 const KIND: Partial<Record<Tipo, GarmentKind>> = {
-  camiseta: 'tee', polo: 'tee', 'ropa deportiva': 'tee', 'ropa interior': 'tee',
+  camiseta: 'tee', polo: 'tee', ropa_deportiva: 'tee', ropa_interior: 'tee',
   camisa: 'shirt', pijama: 'shirt',
-  sudadera: 'knit', jersey: 'knit', chándal: 'knit',
+  sudadera: 'knit', jersey: 'knit', chandal: 'knit',
   chaqueta: 'coat', abrigo: 'coat', chaleco: 'coat',
   blazer: 'blazer', traje: 'blazer',
-  pantalón: 'trousers', vaqueros: 'trousers', 'pantalón corto': 'trousers', bermudas: 'trousers', leggings: 'trousers', mallas_deportivas: 'trousers',
+  pantalon: 'trousers', vaqueros: 'trousers', pantalon_corto: 'trousers', bermudas: 'trousers', leggings: 'trousers', mallas_deportivas: 'trousers',
   falda: 'skirt',
   vestido: 'dress', mono: 'dress', bañador: 'dress', bikini: 'dress',
   zapatillas: 'shoe', zapatos: 'shoe', botas: 'shoe', sandalias: 'shoe', chanclas: 'shoe',

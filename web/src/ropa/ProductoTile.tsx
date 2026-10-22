@@ -1,11 +1,11 @@
 import { formatPrice } from '../data/mock'
 import { ProductoImage } from './ProductoImage'
 import { nombreProveedor, precioFinal, stockTotal, titulo } from './types'
-import type { Producto } from './types'
+import type { Producto, Proveedor } from './types'
 
-export function ProductoTile({ p }: { p: Producto }) {
+export function ProductoTile({ p, proveedores }: { p: Producto; proveedores?: Proveedor[] }) {
   const agotado = !p.disponible || stockTotal(p) === 0
-  const proveedor = nombreProveedor(p)
+  const proveedor = nombreProveedor(p, proveedores)
 
   return (
     <article className="group">

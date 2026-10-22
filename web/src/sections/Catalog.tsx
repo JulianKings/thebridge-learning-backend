@@ -3,7 +3,7 @@ import { useQuery } from '../api/hooks'
 import { CHECK_EVENT } from '../levels/levels'
 import { useProgress } from '../progress/ProgressContext'
 import { ropaApi } from '../ropa/api'
-import { MOCK_ROPA } from '../ropa/mock'
+import { MOCK_PROVEEDORES, MOCK_ROPA } from '../ropa/mock'
 import { ProductoTile } from '../ropa/ProductoTile'
 import { GRUPOS, grupoDe } from '../ropa/types'
 import type { Grupo } from '../ropa/types'
@@ -17,6 +17,7 @@ export function Catalog() {
   const { isUnlocked } = useProgress()
   const live = isUnlocked(2)
   const { data, error, loading } = useQuery(() => (live ? ropaApi.list() : Promise.resolve(MOCK_ROPA)), [live])
+  const { data: proveedores } = useQuery(() => (live ? ropaApi.proveedores() : Promise.resolve(MOCK_PROVEEDORES)), [live])
   const [grupoElegido, setGrupo] = useState<Grupo | null>(null)
   const [temporadaElegida, setTemporada] = useState<string | null>(null)
 
@@ -69,7 +70,7 @@ export function Catalog() {
       ) : (
         <div className="grid grid-cols-2 gap-x-4 gap-y-10 md:grid-cols-3 xl:grid-cols-4">
           {visible.map((p) => (
-            <ProductoTile key={p._id} p={p} />
+            <ProductoTile key={p._id} p={p} proveedores={proveedores} />
           ))}
         </div>
       )}

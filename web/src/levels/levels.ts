@@ -184,15 +184,17 @@ export const LEVELS: LevelDef[] = [
         },
       },
       {
-        id: 'populate',
-        label: 'GET /ropa/:id la devuelve con su proveedor',
+        id: 'read',
+        label: 'GET /ropa/:id devuelve la prenda creada',
         run: async (ctx) => {
-          const res = await ctx.send('GET', `/ropa/${crud(ctx).id}`)
+          const { id, proveedor } = crud(ctx)
+          const res = await ctx.send('GET', `/ropa/${id}`)
           expectStatus(res, [200], 'GET /ropa/:id')
-          if (field(res.body, '_id') !== crud(ctx).id) throw new CheckFailed('Ha devuelto otra prenda')
-          if (typeof field(field(res.body, 'proveedor'), 'nombreComercial') !== 'string') {
-            throw new CheckFailed('El proveedor viene sin datos: usa populate para unir la prenda con su proveedor')
-          }
+          if (field(res.body, '_id') !== id) throw new CheckFailed('Ha devuelto otra prenda')
+          // The join may come back as the ObjectId or populated with the supplier's data.
+          const ref = field(res.body, 'proveedor')
+          const refId = ref && typeof ref === 'object' ? field(ref, '_id') : ref
+          if (refId !== proveedor) throw new CheckFailed('La prenda no guarda el proveedor con el que se creó')
         },
       },
       {
