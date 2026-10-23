@@ -97,7 +97,7 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
         continue
       }
 
-      const ctx: CheckContext = { get, send: (method, path, body) => request(path, method, body), state: {} }
+      const ctx: CheckContext = { get, send: (method, path, body, headers) => request(path, method, body, headers), state: {} }
       // Within a level, stop at the first failure so students fix one thing at a time.
       let levelOk = true
       for (const check of level.checks) {

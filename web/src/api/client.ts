@@ -25,6 +25,7 @@ export function setToken(t: string | null) {
   } catch {
     // The session then lasts until reload.
   }
+  notify()
 }
 
 export function decodeToken(t: string): Record<string, unknown> | null {
@@ -36,9 +37,14 @@ export function decodeToken(t: string): Record<string, unknown> | null {
   }
 }
 
-// Bumped after every write so `useQuery` refetches and screens stay in sync.
+// Bumped after every write and on login/logout, so `useQuery` refetches and screens stay in sync.
 let version = 0
 const listeners = new Set<() => void>()
+
+function notify() {
+  version++
+  listeners.forEach((l) => l())
+}
 
 export const apiVersion = {
   subscribe(fn: () => void) {
@@ -64,10 +70,7 @@ export async function call<T>(method: string, path: string, body?: unknown): Pro
   }
   const data = res.status === 204 ? null : await res.json().catch(() => null)
   if (!res.ok) throw new ApiError(res.status, data?.message ?? `Error ${res.status}`)
-  if (method !== 'GET') {
-    version++
-    listeners.forEach((l) => l())
-  }
+  if (method !== 'GET') notify()
   return data as T
 }
 

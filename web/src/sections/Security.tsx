@@ -1,72 +1,89 @@
-import { Check, Minus, ShieldCheck } from 'lucide-react'
+import { Check, KeyRound, Minus, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { useSession } from '../auth/api'
+import type { Claims } from '../auth/api'
+import { levelById } from '../levels/levels'
+import { useProgress } from '../progress/ProgressContext'
 import { SectionHeading } from './SectionHeading'
 
-const TOKEN = [
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9',
-  'eyJzdWIiOiJ1MiIsIm5hbWUiOiJEaWVnbyBSb21lcm8iLCJyb2xlIjoidHJhYmFqYWRvciJ9',
-  'Qm9uZGFkX2hpbG9fc2VjcmV0b19ub19jb21wYXJ0aXI',
-]
+const EXAMPLE_TOKEN =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY3MThiMDAwMDAwMDAwMDAwMDAwMDAwMSIsInJvbCI6ImNsaWVudGUiLCJpYXQiOjE3OTIxNDEyMDAsImV4cCI6MTc5MjE0NDgwMH0.Qm9uZGFkX2hpbG9fc2VjcmV0b19ub19jb21wYXJ0aXI'
+const EXAMPLE_CLAIMS: Claims = { id: '6718b0000000000000000001', rol: 'cliente', iat: 1792141200, exp: 1792144800 }
+
+const ROLES = ['Cliente', 'Trabajador', 'Encargado'] as const
 
 const PERMISSIONS: { action: string; roles: [boolean, boolean, boolean] }[] = [
-  { action: 'Ver catálogo', roles: [true, true, true] },
-  { action: 'Comprar', roles: [true, true, true] },
-  { action: 'Crear / editar prendas', roles: [false, true, true] },
-  { action: 'Gestionar materiales', roles: [false, true, true] },
-  { action: 'Gestionar trabajadores', roles: [false, false, true] },
-  { action: 'Gestionar clientes', roles: [false, false, true] },
+  { action: 'Ver el catálogo', roles: [true, true, true] },
+  { action: 'Registrarse y comprar', roles: [true, false, false] },
+  { action: 'Crear y editar prendas', roles: [false, true, true] },
+  { action: 'Gestionar proveedores', roles: [false, false, true] },
+  { action: 'Gestionar empleados y clientes', roles: [false, false, true] },
 ]
 
-const LOG = [
-  { m: 'GET', path: '/api/products', who: 'anónimo', code: 200 },
-  { m: 'PUT', path: '/api/products/p3', who: 'sin token', code: 401 },
-  { m: 'DELETE', path: '/api/products/p3', who: 'cliente', code: 403 },
-  { m: 'PUT', path: '/api/products/p3', who: 'token manipulado', code: 401 },
-  { m: 'PUT', path: '/api/products/p3', who: 'trabajador', code: 200 },
-]
+const columnOf = (claims: Claims | null) =>
+  claims?.rol === 'cliente' ? 0 : claims?.rol === 'trabajador' ? (claims.cargo === 'encargado' ? 2 : 1) : null
 
-function useCountdown(seconds: number) {
-  const [left, setLeft] = useState(seconds)
+function useSecondsLeft(exp: number | undefined) {
+  const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
-    const t = setInterval(() => setLeft((s) => (s > 0 ? s - 1 : seconds)), 1000)
+    const t = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(t)
-  }, [seconds])
-  return `${String(Math.floor(left / 60)).padStart(2, '0')}:${String(left % 60).padStart(2, '0')}`
+  }, [])
+  return exp === undefined ? null : Math.floor(exp - now / 1000)
+}
+
+const clock = (s: number) => {
+  const h = Math.floor(s / 3600)
+  const mm = String(Math.floor((s % 3600) / 60)).padStart(2, '0')
+  const ss = String(s % 60).padStart(2, '0')
+  return h ? `${h}:${mm}:${ss}` : `${mm}:${ss}`
 }
 
 export function Security() {
-  const expires = useCountdown(3540)
+  const { isUnlocked, results } = useProgress()
+  const session = useSession()
+  const live = isUnlocked(5)
+  const token = live ? session.token : EXAMPLE_TOKEN
+  const claims = live ? session.claims : EXAMPLE_CLAIMS
+  const left = useSecondsLeft(claims?.exp)
+  const column = columnOf(claims)
+  const [header, payload, signature] = token?.split('.') ?? []
 
   return (
     <div className="px-4 py-16 sm:px-8">
       <SectionHeading level={5} title="Sesión segura">
-        <span className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-ok">
-          <ShieldCheck className="h-4 w-4" /> Rutas protegidas
+        <span className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-muted">
+          <KeyRound className="h-4 w-4" /> JWT
         </span>
       </SectionHeading>
 
       <div className="grid gap-10 lg:grid-cols-2">
         <div>
           <p className="eyebrow">Tu token</p>
-          <p className="mt-3 break-all border border-line bg-panel p-4 font-mono text-xs leading-relaxed">
-            <span className="text-bad">{TOKEN[0]}</span>.<span className="text-accent">{TOKEN[1]}</span>.
-            <span className="text-ok">{TOKEN[2]}</span>
-          </p>
-          <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
-            <pre className="overflow-x-auto bg-paper-2 p-4 font-mono text-xs leading-relaxed">
-{`{
-  "sub": "u2",
-  "name": "Diego Romero",
-  "role": "trabajador",
-  "iat": 1792141200,
-  "exp": 1792144800
-}`}
-            </pre>
-            <div className="flex flex-col justify-center border border-line p-4 text-center">
-              <p className="eyebrow">Caduca en</p>
-              <p className="mt-1 font-mono text-2xl tabular-nums">{expires}</p>
-            </div>
-          </div>
+          {token ? (
+            <>
+              <p className="mt-3 break-all border border-line bg-panel p-4 font-mono text-xs leading-relaxed">
+                <span className="text-bad">{header}</span>.<span className="text-accent">{payload}</span>.<span className="text-ok">{signature}</span>
+              </p>
+              <p className="mt-2 text-xs text-muted">
+                <span className="text-bad">cabecera</span> · <span className="text-accent">datos</span> · <span className="text-ok">firma</span>
+              </p>
+              <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
+                <pre className="overflow-x-auto bg-paper-2 p-4 font-mono text-xs leading-relaxed">{JSON.stringify(claims, null, 2)}</pre>
+                <div className="flex flex-col justify-center border border-line p-4 text-center">
+                  <p className="eyebrow">Caduca en</p>
+                  <p className="mt-1 font-mono text-2xl tabular-nums">
+                    {left === null ? 'Nunca' : left > 0 ? clock(left) : <span className="text-bad">Caducado</span>}
+                  </p>
+                </div>
+              </div>
+              {left === null && <p className="mt-2 text-xs text-bad">Este token no caduca: conviene firmarlo con expiresIn.</p>}
+            </>
+          ) : (
+            <p className="mt-3 border border-dashed border-line p-6 text-center text-sm text-muted">
+              Inicia sesión en «Mi cuenta» para ver aquí tu token y lo que lleva dentro.
+            </p>
+          )}
         </div>
 
         <div>
@@ -75,8 +92,10 @@ export function Security() {
             <thead>
               <tr className="border-b border-line text-[11px] text-muted">
                 <th className="py-2 text-left font-normal" />
-                {['Cliente', 'Trabajador', 'Encargado'].map((r) => (
-                  <th key={r} className="py-2 text-center font-normal">{r}</th>
+                {ROLES.map((r, i) => (
+                  <th key={r} className={`py-2 text-center font-normal ${column === i ? 'text-ink underline underline-offset-4' : ''}`}>
+                    {r}
+                  </th>
                 ))}
               </tr>
             </thead>
@@ -85,7 +104,7 @@ export function Security() {
                 <tr key={p.action} className="border-b border-line">
                   <td className="py-2.5">{p.action}</td>
                   {p.roles.map((ok, i) => (
-                    <td key={i} className="text-center">
+                    <td key={i} className={`text-center ${column === i ? 'bg-paper-2' : ''}`}>
                       {ok ? <Check className="mx-auto h-4 w-4 text-ok" /> : <Minus className="mx-auto h-4 w-4 text-line" />}
                     </td>
                   ))}
@@ -93,17 +112,25 @@ export function Security() {
               ))}
             </tbody>
           </table>
+          {live && <p className="mt-2 text-xs text-muted">Las rutas todavía no están protegidas por rol: llegará en un próximo paso.</p>}
 
-          <p className="eyebrow mt-8">Últimas peticiones</p>
-          <ul className="mt-3 space-y-1.5 font-mono text-[11px]">
-            {LOG.map((l, i) => (
-              <li key={i} className="flex items-center gap-3">
-                <span className={`w-10 text-center ${l.code < 300 ? 'bg-ok-soft text-ok' : 'bg-bad-soft text-bad'}`}>{l.code}</span>
-                <span className="w-14 text-muted">{l.m}</span>
-                <span className="flex-1 truncate">{l.path}</span>
-                <span className="text-muted">{l.who}</span>
-              </li>
-            ))}
+          <p className="eyebrow mt-8">Comprobaciones de autenticación</p>
+          <ul className="mt-3 space-y-1.5 text-xs">
+            {levelById(5).checks.map((c) => {
+              const status = live ? results[5]?.[c.id]?.status : 'pass'
+              return (
+                <li key={c.id} className="flex items-center gap-2">
+                  {status === 'pass' ? (
+                    <Check className="h-3.5 w-3.5 shrink-0 text-ok" />
+                  ) : status === 'fail' ? (
+                    <X className="h-3.5 w-3.5 shrink-0 text-bad" />
+                  ) : (
+                    <Minus className="h-3.5 w-3.5 shrink-0 text-line" />
+                  )}
+                  {c.label}
+                </li>
+              )
+            })}
           </ul>
         </div>
       </div>

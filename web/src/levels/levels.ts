@@ -1,3 +1,4 @@
+import { decodeToken } from '../api/client'
 import { API_URL } from '../config'
 
 export type ApiResponse = { status: number; body: unknown; ms: number }
@@ -5,7 +6,7 @@ export type ApiResponse = { status: number; body: unknown; ms: number }
 export type CheckContext = {
   // Cached per run, so several checks can inspect the same response.
   get: (path: string) => Promise<ApiResponse>
-  send: (method: string, path: string, body?: unknown) => Promise<ApiResponse>
+  send: (method: string, path: string, body?: unknown, headers?: Record<string, string>) => Promise<ApiResponse>
   // Shared by the checks of one level, e.g. the id of a product created by an earlier check.
   state: Record<string, unknown>
 }
@@ -34,13 +35,13 @@ export type LevelDef = {
 
 export class CheckFailed extends Error {}
 
-export async function request(path: string, method = 'GET', body?: unknown): Promise<ApiResponse> {
+export async function request(path: string, method = 'GET', body?: unknown, headers: Record<string, string> = {}): Promise<ApiResponse> {
   const start = performance.now()
   let res: Response
   try {
     res = await fetch(`${API_URL}${path}`, {
       method,
-      headers: body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
+      headers: { ...(body !== undefined && { 'Content-Type': 'application/json' }), ...headers },
       body: body !== undefined ? JSON.stringify(body) : undefined,
       signal: AbortSignal.timeout(8000),
     })
@@ -82,6 +83,63 @@ const testProducto = (proveedor: string) => ({
 type CrudState = { proveedor?: string; id?: string; created?: string[] }
 const crud = (ctx: CheckContext) => ctx.state as CrudState
 const track = (ctx: CheckContext, id: string) => (crud(ctx).created ??= []).push(id)
+
+type Spec = {
+  openapi?: unknown
+  info?: { title?: unknown }
+  paths?: Record<string, Record<string, unknown>>
+  components?: {
+    schemas?: Record<string, { properties?: Record<string, unknown>; required?: unknown }>
+    securitySchemes?: Record<string, { type?: unknown; scheme?: unknown }>
+  }
+}
+
+async function getSpec(ctx: CheckContext): Promise<Spec> {
+  const res = await ctx.get('/api-docs.json')
+  expectStatus(res, [200], 'GET /api-docs.json')
+  if (!res.body || typeof res.body !== 'object') throw new CheckFailed('/api-docs.json no devuelve un documento JSON')
+  return res.body as Spec
+}
+
+// Path parameters may be named {id}, {_id}…; only the shape of the route matters.
+const routeShape = (path: string) => path.replace(/\{[^}]+\}/g, '{}').replace(/\/$/, '')
+
+function expectDocumented(spec: Spec, routes: [string, string][]) {
+  const documented = new Set(
+    Object.entries(spec.paths ?? {}).flatMap(([path, ops]) => Object.keys(ops ?? {}).map((m) => `${m.toUpperCase()} ${routeShape(path)}`)),
+  )
+  const missing = routes.filter(([m, p]) => !documented.has(`${m} ${routeShape(p)}`)).map(([m, p]) => `${m} ${p}`)
+  if (missing.length) throw new CheckFailed(`Faltan por documentar: ${missing.join(', ')}`)
+}
+
+// Each browser registers one test cliente and reuses it, so the checks don't pile up users.
+type TestCliente = { nombre: string; email: string; password: string }
+const TEST_CLIENTE_KEY = 'hilo-check-cliente'
+
+function storedCliente(): TestCliente | null {
+  try {
+    return JSON.parse(localStorage.getItem(TEST_CLIENTE_KEY) ?? 'null')
+  } catch {
+    return null
+  }
+}
+
+function storeCliente(c: TestCliente) {
+  try {
+    localStorage.setItem(TEST_CLIENTE_KEY, JSON.stringify(c))
+  } catch {
+    // Without storage a new test cliente is registered on every run.
+  }
+}
+
+const randomId = () => Math.random().toString(36).slice(2, 10)
+const newCliente = (): TestCliente => ({ nombre: 'Cliente de prueba', email: `check.${randomId()}@thebridge.test`, password: `Check-${randomId()}` })
+const registroBody = (c: TestCliente) => ({ ...c, fechaNacimiento: '2000-01-01', genero: 'Mujer', cp: '28013' })
+const includesPassword = (body: unknown) => JSON.stringify(body ?? null).includes('"password"')
+const bearer = (token: string) => ({ Authorization: `Bearer ${token}` })
+
+type AuthState = { cliente?: TestCliente; token?: string }
+const auth = (ctx: CheckContext) => ctx.state as AuthState
 
 export const LEVELS: LevelDef[] = [
   {
@@ -256,19 +314,143 @@ export const LEVELS: LevelDef[] = [
     title: 'Documentación',
     short: 'Swagger',
     tagline: 'Swagger / OpenAPI',
-    goal: 'Documenta la API con Swagger para que cualquiera pueda usarla.',
-    reward: 'La tienda se pone de gala con el modo editorial.',
-    checks: [],
+    goal: 'Documenta la API con Swagger: interfaz en /api-docs y especificación OpenAPI en /api-docs.json.',
+    reward: 'La tienda se pone de gala con el modo editorial y muestra vuestra documentación en vivo.',
+    checks: [
+      {
+        id: 'ui',
+        label: 'GET /api-docs muestra Swagger UI',
+        run: async (ctx) => expectStatus(await ctx.get('/api-docs'), [200], 'GET /api-docs'),
+      },
+      {
+        id: 'spec',
+        label: 'GET /api-docs.json es un documento OpenAPI 3',
+        run: async (ctx) => {
+          const spec = await getSpec(ctx)
+          if (typeof spec.openapi !== 'string' || !spec.openapi.startsWith('3.')) throw new CheckFailed('Falta "openapi": "3.x" en la especificación')
+          if (typeof spec.info?.title !== 'string') throw new CheckFailed('Falta info.title en la especificación')
+          if (!spec.paths || typeof spec.paths !== 'object') throw new CheckFailed('La especificación no tiene "paths"')
+        },
+      },
+      {
+        id: 'paths',
+        label: 'Documenta /status y el CRUD de /ropa',
+        run: async (ctx) =>
+          expectDocumented(await getSpec(ctx), [
+            ['GET', '/status'],
+            ['GET', '/ropa'],
+            ['POST', '/ropa'],
+            ['GET', '/ropa/{id}'],
+            ['PUT', '/ropa/{id}'],
+            ['DELETE', '/ropa/{id}'],
+          ]),
+      },
+      {
+        id: 'schema',
+        label: 'Define el esquema Producto con sus campos obligatorios',
+        run: async (ctx) => {
+          const schemas = (await getSpec(ctx)).components?.schemas ?? {}
+          const producto = Object.entries(schemas).find(([name]) => name.toLowerCase() === 'producto')?.[1]
+          if (!producto) throw new CheckFailed('No hay ningún esquema "Producto" en components.schemas')
+          const required = Array.isArray(producto.required) ? producto.required : []
+          const missing = ['tipo', 'precio', 'temporada', 'proveedor'].filter((f) => !required.includes(f))
+          if (missing.length) throw new CheckFailed(`El esquema Producto no marca como obligatorios: ${missing.join(', ')}`)
+        },
+      },
+    ],
   },
   {
     id: 5,
     key: 'auth',
     title: 'Autenticación',
     short: 'Auth',
-    tagline: 'Login, JWT y rutas protegidas',
-    goal: 'Registro e inicio de sesión con contraseñas cifradas, tokens JWT y rutas protegidas por rol.',
-    reward: 'Los clientes entran en su cuenta y cada rol ve solo lo que le corresponde.',
-    checks: [],
+    tagline: 'Registro, login y JWT',
+    goal: 'Registro de clientes e inicio de sesión de clientes y empleados con contraseñas cifradas y tokens JWT.',
+    reward: 'Los clientes se registran e inician sesión, y ves tu propio token.',
+    writes: true,
+    checks: [
+      {
+        id: 'registro',
+        label: 'POST /auth/registro crea un cliente',
+        run: async (ctx) => {
+          const stored = storedCliente()
+          const cliente = stored ?? newCliente()
+          const res = await ctx.send('POST', '/auth/registro', registroBody(cliente))
+          auth(ctx).cliente = cliente
+          // Registered on a previous run: the API now rejects the repeated email, as it should.
+          if (stored && [400, 409].includes(res.status)) return
+          expectStatus(res, [201], 'POST /auth/registro')
+          if (includesPassword(res.body)) throw new CheckFailed('La respuesta incluye la contraseña: no la devuelvas nunca')
+          storeCliente(cliente)
+        },
+      },
+      {
+        id: 'duplicado',
+        label: 'Un email ya registrado se rechaza (400 / 409)',
+        run: async (ctx) =>
+          expectStatus(await ctx.send('POST', '/auth/registro', registroBody(auth(ctx).cliente!)), [400, 409], 'Registro con un email repetido'),
+      },
+      {
+        id: 'login',
+        label: 'POST /auth/login devuelve un token JWT con el rol',
+        run: async (ctx) => {
+          const { email, password } = auth(ctx).cliente!
+          const res = await ctx.send('POST', '/auth/login', { email, password })
+          expectStatus(res, [200], 'POST /auth/login')
+          const token = field(res.body, 'token')
+          const claims = typeof token === 'string' ? decodeToken(token) : null
+          if (typeof token !== 'string' || !claims) throw new CheckFailed('La respuesta debería incluir "token" con un JWT válido')
+          if (claims.rol !== 'cliente') throw new CheckFailed(`El token debería llevar rol: "cliente" y lleva ${JSON.stringify(claims.rol ?? null)}`)
+          if (!field(res.body, 'usuario')) throw new CheckFailed('La respuesta debería incluir "usuario"')
+          if (includesPassword(res.body)) throw new CheckFailed('La respuesta incluye la contraseña: no la devuelvas nunca')
+          auth(ctx).token = token
+        },
+      },
+      {
+        id: 'wrong',
+        label: 'Una contraseña incorrecta devuelve 401',
+        run: async (ctx) => {
+          const { email } = auth(ctx).cliente!
+          expectStatus(await ctx.send('POST', '/auth/login', { email, password: 'contraseña-incorrecta' }), [401], 'Login con contraseña incorrecta')
+        },
+      },
+      {
+        id: 'perfil',
+        label: 'GET /auth/perfil con el token devuelve tu perfil',
+        run: async (ctx) => {
+          const res = await ctx.send('GET', '/auth/perfil', undefined, bearer(auth(ctx).token!))
+          expectStatus(res, [200], 'GET /auth/perfil')
+          if (field(res.body, 'email') !== auth(ctx).cliente!.email) throw new CheckFailed('El perfil devuelto no es el del usuario del token')
+          if (includesPassword(res.body)) throw new CheckFailed('El perfil incluye la contraseña: no la devuelvas nunca')
+        },
+      },
+      {
+        id: 'protegido',
+        label: 'Sin token o con un token falso, 401',
+        run: async (ctx) => {
+          expectStatus(await ctx.send('GET', '/auth/perfil'), [401], 'GET /auth/perfil sin token')
+          const token = auth(ctx).token!
+          const forged = token.slice(0, -2) + (token.endsWith('AA') ? 'BB' : 'AA')
+          expectStatus(await ctx.send('GET', '/auth/perfil', undefined, bearer(forged)), [401], 'GET /auth/perfil con la firma manipulada')
+        },
+      },
+      {
+        id: 'docs',
+        label: 'Swagger documenta el login y la autenticación Bearer',
+        run: async (ctx) => {
+          const spec = await getSpec(ctx)
+          expectDocumented(spec, [
+            ['POST', '/auth/registro'],
+            ['POST', '/auth/login'],
+            ['GET', '/auth/perfil'],
+          ])
+          const schemes = Object.values(spec.components?.securitySchemes ?? {})
+          if (!schemes.some((sc) => sc.type === 'http' && String(sc.scheme).toLowerCase() === 'bearer')) {
+            throw new CheckFailed('Añade en components.securitySchemes un esquema { type: "http", scheme: "bearer" }')
+          }
+        },
+      },
+    ],
   },
   {
     id: 6,
