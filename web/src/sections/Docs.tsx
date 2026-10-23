@@ -27,7 +27,8 @@ type Operation = {
   requestBody?: { content?: Record<string, { schema?: { $ref?: string; type?: string } }> }
   responses?: Record<string, { description?: string }>
 }
-type OpenApi = { openapi?: string; info?: { title?: string; version?: string }; security?: unknown[]; paths?: Record<string, Record<string, Operation>> }
+type PathItem = Partial<Record<string, Operation>> & { parameters?: Operation['parameters'] }
+type OpenApi = { openapi?: string; info?: { title?: string; version?: string }; security?: unknown[]; paths?: Record<string, PathItem> }
 
 const METHODS = ['get', 'post', 'put', 'patch', 'delete']
 
@@ -54,8 +55,10 @@ const PREVIEW: Group[] = [
 function groupsFrom(spec: OpenApi): Group[] {
   const groups = new Map<string, Endpoint[]>()
   for (const [path, ops] of Object.entries(spec.paths ?? {})) {
+    // Parameters may be declared once for the whole path (e.g. {id}) instead of per operation.
+    const shared = ops?.parameters ?? []
     for (const m of METHODS) {
-      const op = ops?.[m]
+      const op = ops?.[m] as Operation | undefined
       if (!op) continue
       const tag = op.tags?.[0] ?? 'General'
       const body = Object.values(op.requestBody?.content ?? {})[0]?.schema
@@ -66,7 +69,7 @@ function groupsFrom(spec: OpenApi): Group[] {
           path,
           desc: op.summary ?? op.description ?? '',
           auth: (op.security ?? spec.security ?? []).length > 0,
-          params: (op.parameters ?? []).map((p) => `${p.name} (${p.in}${p.required ? ', obligatorio' : ''})`),
+          params: [...shared, ...(op.parameters ?? [])].map((p) => `${p.name} (${p.in}${p.required ? ', obligatorio' : ''})`),
           body: body?.$ref?.split('/').pop() ?? body?.type,
           responses: Object.entries(op.responses ?? {}).map(([code, r]) => [code, r?.description ?? ''] as [string, string]),
         },

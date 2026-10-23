@@ -89,9 +89,29 @@ type Spec = {
   info?: { title?: unknown }
   paths?: Record<string, Record<string, unknown>>
   components?: {
-    schemas?: Record<string, { properties?: Record<string, unknown>; required?: unknown }>
+    schemas?: Record<string, SchemaNode>
     securitySchemes?: Record<string, { type?: unknown; scheme?: unknown }>
   }
+}
+
+type SchemaNode = { required?: unknown; allOf?: unknown; $ref?: unknown }
+
+const resolveRef = (spec: Spec, ref: unknown) =>
+  typeof ref === 'string' && ref.startsWith('#/components/schemas/') ? spec.components?.schemas?.[ref.split('/').pop()!] : undefined
+
+// Required fields of a schema, following $ref and allOf (e.g. Producto = allOf[_id, $ref ProductoInput, timestamps]).
+function requiredFields(spec: Spec, schema: SchemaNode | undefined, seen = new Set<unknown>()): string[] {
+  if (!schema || seen.has(schema)) return []
+  seen.add(schema)
+  const own = Array.isArray(schema.required) ? schema.required.filter((f): f is string => typeof f === 'string') : []
+  const parts = Array.isArray(schema.allOf) ? (schema.allOf as SchemaNode[]) : []
+  return [...own, ...requiredFields(spec, resolveRef(spec, schema.$ref), seen), ...parts.flatMap((p) => requiredFields(spec, p, seen))]
+}
+
+const requestSchema = (spec: Spec, method: string, path: string) => {
+  const op = Object.entries(spec.paths ?? {}).find(([p]) => routeShape(p) === routeShape(path))?.[1]?.[method]
+  const content = field(field(op, 'requestBody'), 'content')
+  return field(field(content, 'application/json'), 'schema') as SchemaNode | undefined
 }
 
 async function getSpec(ctx: CheckContext): Promise<Spec> {
@@ -349,11 +369,12 @@ export const LEVELS: LevelDef[] = [
         id: 'schema',
         label: 'Define el esquema Producto con sus campos obligatorios',
         run: async (ctx) => {
-          const schemas = (await getSpec(ctx)).components?.schemas ?? {}
-          const producto = Object.entries(schemas).find(([name]) => name.toLowerCase() === 'producto')?.[1]
+          const spec = await getSpec(ctx)
+          const producto = Object.entries(spec.components?.schemas ?? {}).find(([name]) => name.toLowerCase() === 'producto')?.[1]
           if (!producto) throw new CheckFailed('No hay ningún esquema "Producto" en components.schemas')
-          const required = Array.isArray(producto.required) ? producto.required : []
-          const missing = ['tipo', 'precio', 'temporada', 'proveedor'].filter((f) => !required.includes(f))
+          // Either the Producto schema or the body that POST /ropa expects may carry the required list.
+          const required = new Set([...requiredFields(spec, producto), ...requiredFields(spec, requestSchema(spec, 'post', '/ropa'))])
+          const missing = ['tipo', 'precio', 'temporada', 'proveedor'].filter((f) => !required.has(f))
           if (missing.length) throw new CheckFailed(`El esquema Producto no marca como obligatorios: ${missing.join(', ')}`)
         },
       },
