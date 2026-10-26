@@ -195,7 +195,7 @@ export function ProductoEditor({ producto, proveedores, onClose }: Props) {
           </div>
         </div>
 
-        <div className="flex items-center justify-between gap-4 border-t border-line px-6 py-4">
+        <div className="drawer-footer flex items-center justify-between gap-4 border-t border-line px-6 py-4">
           <span className="font-mono text-[11px] text-muted">{producto ? `PUT /ropa/${producto._id}` : 'POST /ropa'}</span>
           <button disabled={busy} className={btnPrimary}>
             {busy ? 'Guardando…' : 'Guardar'}

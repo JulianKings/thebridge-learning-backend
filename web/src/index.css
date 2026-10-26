@@ -142,3 +142,21 @@ body {
   .fx-pulse { animation: none; }
   html { scroll-behavior: auto; }
 }
+
+/* Netlify's free-tier badge (an iframe injected by /.netlify/scripts/hud) is
+   pinned bottom-right with inline styles, right on top of the drawers'
+   "Guardar" buttons. Move it bottom-left: its content already has 8px of inner
+   padding on that side, so 10px more matches the 18px it keeps from the bottom. */
+#nl-badge-frame,
+#nl-hud-frame {
+  right: auto !important;
+  left: 10px !important;
+}
+
+/* On phones the drawers are full width, so the badge (~40px tall, 18px up)
+   would still cover their footers: lift the footer content above it. */
+@media (max-width: 639px) {
+  body:has(#nl-badge-frame, #nl-hud-frame) .drawer-footer {
+    padding-bottom: 4.75rem;
+  }
+}

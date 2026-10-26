@@ -82,7 +82,7 @@ export function CartDrawer() {
             )}
 
             {lines.length > 0 && (
-              <div className="border-t border-line px-6 py-5">
+              <div className="drawer-footer border-t border-line px-6 py-5">
                 <div className="flex justify-between text-sm">
                   <span className="uppercase tracking-wide">Total</span>
                   <span>{formatPrice(total)}</span>
