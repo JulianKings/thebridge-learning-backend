@@ -1,51 +1,30 @@
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext } from 'react'
 import type { ReactNode } from 'react'
-import { api, getToken, setToken } from '../api/client'
-import type { User } from '../api/types'
+import { useQuery } from '../api/hooks'
+import { authApi, esPersonal, useSession } from '../auth/api'
+import type { Usuario } from '../auth/api'
 
 type AuthValue = {
-  user: User | null
+  usuario: Usuario | null
+  rol?: string
   ready: boolean
-  login: (email: string, password: string) => Promise<User>
-  register: (name: string, email: string, password: string) => Promise<User>
-  logout: () => void
   isStaff: boolean
-  isManager: boolean
+  isAdmin: boolean
 }
 
 const AuthContext = createContext<AuthValue | null>(null)
 
+// The shop shares the session of "Mi cuenta"; the profile is fetched once here for every page.
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
-  const [ready, setReady] = useState(!getToken())
-
-  // Restore the session from a token saved by a previous visit.
-  useEffect(() => {
-    if (!getToken()) return
-    api
-      .me()
-      .then(setUser)
-      .catch(() => setToken(null))
-      .finally(() => setReady(true))
-  }, [])
-
-  const start = ({ token, user }: { token: string; user: User }) => {
-    setToken(token)
-    setUser(user)
-    return user
-  }
+  const { token, claims } = useSession()
+  const { data, error, loading } = useQuery(() => (token ? authApi.perfil() : Promise.resolve(null)), [token])
 
   const value: AuthValue = {
-    user,
-    ready,
-    login: (email, password) => api.login(email, password).then(start),
-    register: (name, email, password) => api.register(name, email, password).then(start),
-    logout: () => {
-      setToken(null)
-      setUser(null)
-    },
-    isStaff: user?.role === 'trabajador' || user?.role === 'encargado',
-    isManager: user?.role === 'encargado',
+    usuario: token && !error ? (data ?? null) : null,
+    rol: claims?.rol,
+    ready: !token || !loading || !!data || !!error,
+    isStaff: esPersonal(claims?.rol),
+    isAdmin: claims?.rol === 'administrador',
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

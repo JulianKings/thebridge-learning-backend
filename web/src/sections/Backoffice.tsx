@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useQuery } from '../api/hooks'
 import { formatPrice } from '../data/mock'
 import { CHECK_EVENT } from '../levels/levels'
+import { esPersonal, useSession } from '../auth/api'
 import { useProgress } from '../progress/ProgressContext'
 import { ropaApi } from '../ropa/api'
 import { MOCK_PROVEEDORES, MOCK_ROPA } from '../ropa/mock'
@@ -73,11 +74,20 @@ function Table({ ropa, proveedores, onEdit, onDelete }: {
   )
 }
 
-function LivePanel() {
+// `editId` opens that product's editor directly, e.g. from "Editar en gestión" on a product page.
+export function PrendasPanel({ editId }: { editId?: string }) {
+  const { isUnlocked } = useProgress()
+  const { claims } = useSession()
   const { data, error, loading } = useQuery(() => ropaApi.list(), [])
   const { data: proveedores = [], error: proveedoresError } = useQuery(() => ropaApi.proveedores(), [])
   const [editing, setEditing] = useState<Producto | 'new' | null>(null)
   const ropa = (data ?? []).filter((p) => p.evento !== CHECK_EVENT)
+  const [opened, setOpened] = useState<string>()
+  if (editId && editId !== opened && data) {
+    const target = data.find((p) => p._id === editId)
+    setOpened(editId)
+    if (target) setEditing(target)
+  }
 
   const remove = async (p: Producto) => {
     if (!confirm(`¿Eliminar «${titulo(p)}»?`)) return
@@ -91,11 +101,16 @@ function LivePanel() {
 
   return (
     <>
-      <SectionHeading level={3} title="Panel de trabajador">
+      <div className="mb-6 flex justify-end">
         <button onClick={() => setEditing('new')} className="flex items-center gap-2 bg-ink px-5 py-3 text-[11px] uppercase tracking-[0.18em] text-paper hover:opacity-85">
           <Plus className="h-4 w-4" /> Nueva prenda
         </button>
-      </SectionHeading>
+      </div>
+      {isUnlocked(6) && !esPersonal(claims?.rol) && (
+        <p className="mb-6 border-l-2 border-accent bg-paper-2 px-4 py-3 text-sm">
+          Las rutas de escritura están protegidas: inicia sesión como empleado en «Mi cuenta» para crear, editar o borrar prendas.
+        </p>
+      )}
       {proveedoresError && (
         <p className="mb-6 border-l-2 border-bad bg-bad-soft px-4 py-3 text-sm text-bad">
           No se han podido cargar los proveedores ({proveedoresError.status}): no podrás asignar proveedor a las prendas.
@@ -127,7 +142,10 @@ export function Backoffice() {
   return (
     <div className="px-4 py-16 sm:px-8">
       {isUnlocked(3) ? (
-        <LivePanel />
+        <>
+          <SectionHeading level={3} title="Panel de trabajador" />
+          <PrendasPanel />
+        </>
       ) : (
         <>
           <SectionHeading level={3} title="Panel de trabajador">

@@ -1,9 +1,8 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useSyncExternalStore } from 'react'
-import { Garment } from '../components/Garment'
-import { formatPrice } from '../data/mock'
 import { ApiError } from '../api/types'
-import type { Product } from '../api/types'
+import { ProductoTile } from '../ropa/ProductoTile'
+import type { Producto, Proveedor } from '../ropa/types'
 import { shopHref } from './router'
 
 type Toast = { id: number; text: string; kind: 'ok' | 'error' }
@@ -74,23 +73,10 @@ export function GridSkeleton({ n = 8 }: { n?: number }) {
   )
 }
 
-export function ProductCard({ p }: { p: Product }) {
+export function ProductCard({ p, proveedores }: { p: Producto; proveedores?: Proveedor[] }) {
   return (
-    <a href={shopHref(`p/${p.id}`)} className="group block">
-      <div className="relative overflow-hidden">
-        <Garment kind={p.kind} tone={p.tone} ink={p.ink} className="aspect-[3/4] transition-transform duration-700 group-hover:scale-[1.03]" />
-        {p.isNew && <span className="absolute left-3 top-3 bg-paper px-2 py-1 text-[10px] uppercase tracking-[0.18em] text-ink">Nuevo</span>}
-        {p.stock === 0 ? (
-          <span className="absolute inset-x-0 bottom-0 bg-paper/90 py-2 text-center text-[10px] uppercase tracking-[0.2em] text-ink">Agotado</span>
-        ) : p.stock < 8 ? (
-          <span className="absolute inset-x-0 bottom-0 bg-paper/90 py-2 text-center text-[10px] uppercase tracking-[0.2em] text-bad">Últimas unidades</span>
-        ) : null}
-      </div>
-      <div className="mt-3 flex items-start justify-between gap-3 text-[13px]">
-        <h3 className="uppercase tracking-wide">{p.name}</h3>
-        <span className="shrink-0">{formatPrice(p.price)}</span>
-      </div>
-      <p className="mt-0.5 text-xs text-muted">{p.category}</p>
+    <a href={shopHref(`p/${p._id}`)} className="block">
+      <ProductoTile p={p} proveedores={proveedores} />
     </a>
   )
 }

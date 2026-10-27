@@ -1,9 +1,11 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import type { ReactNode } from 'react'
-import { LEVELS, request } from '../levels/levels'
-import type { ApiResponse, CheckContext } from '../levels/levels'
+import { apiVersion, decodeToken, getToken } from '../api/client'
+import { CheckSkipped, LEVELS, NeedsLogin, request } from '../levels/levels'
+import type { ApiResponse, CheckContext, Session } from '../levels/levels'
 
-export type CheckStatus = 'idle' | 'running' | 'pass' | 'fail'
+// "skip" doesn't block its level; "login" does, until someone logs in with the right role.
+export type CheckStatus = 'idle' | 'running' | 'pass' | 'fail' | 'skip' | 'login'
 export type CheckResult = { status: CheckStatus; message?: string }
 type Results = Record<number, Record<string, CheckResult>>
 
@@ -59,12 +61,17 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
   const [celebrate, setCelebrate] = useState<number | null>(null)
   const [editorialPref, setEditorialPref] = useState(() => readNumber(EDITORIAL_KEY) === 1)
   const busy = useRef(false)
+  // A run requested while another is in progress (e.g. logging in mid-run) is queued, not dropped.
+  const queued = useRef<{ writes: boolean } | null>(null)
   const lastWriteOutcome = useRef<Record<number, boolean>>({})
 
   // Background runs (poll, window focus) pass `writes: false`: levels that create
   // test data keep their last outcome instead of hitting the database again.
   const run = useCallback(async ({ writes }: { writes: boolean }) => {
-    if (busy.current) return
+    if (busy.current) {
+      queued.current = { writes: writes || !!queued.current?.writes }
+      return
+    }
     busy.current = true
     setRunning(true)
 
@@ -73,6 +80,8 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
       if (!cache.has(path)) cache.set(path, request(path))
       return cache.get(path)!
     }
+    const token = getToken()
+    const session: Session | null = token ? { token, rol: decodeToken(token)?.rol as string | undefined } : null
     const setCheck = (level: number, id: string, result: CheckResult) =>
       setResults((prev) => ({ ...prev, [level]: { ...prev[level], [id]: result } }))
 
@@ -97,7 +106,11 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
         continue
       }
 
-      const ctx: CheckContext = { get, send: (method, path, body, headers) => request(path, method, body, headers), state: {} }
+      const ctx: CheckContext = { get, send: (method, path, body, headers) => request(path, method, body, headers), state: {}, session }
+      // A level already verified in this browser (with a staff session) doesn't relock just because
+      // the current session can't re-run its staff-only checks, e.g. a cliente shopping in the store.
+      const verifiedBefore = readNumber(CELEBRATED_KEY) >= level.id
+      let pendingLogin: string | null = null
       // Within a level, stop at the first failure so students fix one thing at a time.
       let levelOk = true
       for (const check of level.checks) {
@@ -105,13 +118,27 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
           setCheck(level.id, check.id, { status: 'idle' })
           continue
         }
+        if (pendingLogin) {
+          setCheck(level.id, check.id, { status: 'skip', message: pendingLogin })
+          continue
+        }
         setCheck(level.id, check.id, { status: 'running' })
         try {
           await check.run(ctx)
           setCheck(level.id, check.id, { status: 'pass' })
         } catch (e) {
+          const message = e instanceof Error ? e.message : String(e)
+          if (e instanceof CheckSkipped) {
+            setCheck(level.id, check.id, { status: 'skip', message })
+            continue
+          }
+          if (e instanceof NeedsLogin && verifiedBefore) {
+            pendingLogin = 'Ya comprobado antes en este navegador; inicia sesión como personal para volver a comprobarlo'
+            setCheck(level.id, check.id, { status: 'skip', message: pendingLogin })
+            continue
+          }
           levelOk = false
-          setCheck(level.id, check.id, { status: 'fail', message: e instanceof Error ? e.message : String(e) })
+          setCheck(level.id, check.id, { status: e instanceof NeedsLogin ? 'login' : 'fail', message })
         }
       }
       await level.cleanup?.(ctx).catch(() => {})
@@ -138,11 +165,23 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
     }
     setRunning(false)
     busy.current = false
+    const next = queued.current
+    queued.current = null
+    if (next) run(next)
   }, [])
 
   const runChecks = useCallback(() => {
     run({ writes: true })
   }, [run])
+
+  // Logging in or out on "Mi cuenta" changes which staff-only checks can run.
+  const sessionToken = useSyncExternalStore(apiVersion.subscribe, getToken)
+  const lastToken = useRef(sessionToken)
+  useEffect(() => {
+    if (lastToken.current === sessionToken) return
+    lastToken.current = sessionToken
+    runChecks()
+  }, [sessionToken, runChecks])
 
   useEffect(() => {
     runChecks()

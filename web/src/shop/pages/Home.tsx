@@ -1,19 +1,26 @@
 import { ArrowRight } from 'lucide-react'
 import { useQuery } from '../../api/hooks'
-import { api } from '../../api/client'
 import { Garment } from '../../components/Garment'
+import { CHECK_EVENT } from '../../levels/levels'
+import { ropaApi } from '../../ropa/api'
+import { GRUPO_SLUG, stockTotal } from '../../ropa/types'
 import { shopHref } from '../router'
 import { ErrorBox, GridSkeleton, ProductCard } from '../ui'
 
 const CATEGORY_TILES = [
-  { slug: 'mujer', label: 'Mujer', kind: 'dress', tone: '#d8cbbb', ink: '#6f5d48' },
-  { slug: 'hombre', label: 'Hombre', kind: 'blazer', tone: '#2a2f36', ink: '#8b96a3' },
-  { slug: 'unisex', label: 'Unisex', kind: 'knit', tone: '#b6533b', ink: '#f1d9cf' },
+  { slug: GRUPO_SLUG['Parte de arriba'], label: 'Parte de arriba', kind: 'knit', tone: '#b6533b', ink: '#f1d9cf' },
+  { slug: GRUPO_SLUG['Parte de abajo'], label: 'Parte de abajo', kind: 'trousers', tone: '#d8cbbb', ink: '#6f5d48' },
+  { slug: GRUPO_SLUG.Calzado, label: 'Calzado', kind: 'shoe', tone: '#2a2f36', ink: '#8b96a3' },
 ] as const
 
 export function Home() {
-  const { data, loading, error } = useQuery(() => api.listProducts({ sort: 'nuevo' }), [])
-  const news = data?.filter((p) => p.isNew).slice(0, 4) ?? []
+  const { data, loading, error } = useQuery(() => ropaApi.list(), [])
+  const { data: proveedores } = useQuery(() => ropaApi.proveedores(), [])
+  // Products with an event (Rebajas, Black Friday…) first, and only ones that can be bought.
+  const news = (data ?? [])
+    .filter((p) => p.evento !== CHECK_EVENT && p.disponible && stockTotal(p) > 0)
+    .sort((a, b) => Number(!!b.evento) - Number(!!a.evento))
+    .slice(0, 4)
 
   return (
     <>
@@ -43,7 +50,7 @@ export function Home() {
         {error ? <ErrorBox error={error} /> : loading && !data ? <GridSkeleton n={4} /> : (
           <div className="grid grid-cols-2 gap-x-4 gap-y-10 md:grid-cols-4">
             {news.map((p) => (
-              <ProductCard key={p.id} p={p} />
+              <ProductCard key={p._id} p={p} proveedores={proveedores} />
             ))}
           </div>
         )}

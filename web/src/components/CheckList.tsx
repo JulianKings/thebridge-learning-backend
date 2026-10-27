@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { Check, LoaderCircle, X } from 'lucide-react'
+import { Check, LoaderCircle, LogIn, Minus, X } from 'lucide-react'
 import type { LevelDef } from '../levels/levels'
 import { useProgress } from '../progress/ProgressContext'
 import type { CheckResult, CheckStatus } from '../progress/ProgressContext'
@@ -16,6 +16,18 @@ function StatusIcon({ status }: { status: CheckStatus }) {
       <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} className="flex h-5 w-5 items-center justify-center rounded-full bg-fx-red text-fx-bg">
         <X className="h-3 w-3" strokeWidth={3.5} />
       </motion.span>
+    )
+  if (status === 'login')
+    return (
+      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-fx-amber/20 text-fx-amber">
+        <LogIn className="h-3 w-3" strokeWidth={3} />
+      </span>
+    )
+  if (status === 'skip')
+    return (
+      <span className="flex h-5 w-5 items-center justify-center rounded-full border-2 border-fx-line text-fx-muted">
+        <Minus className="h-3 w-3" strokeWidth={3} />
+      </span>
     )
   if (status === 'running') return <LoaderCircle className="h-5 w-5 animate-spin text-fx-pink" />
   return <span className="h-5 w-5 rounded-full border-2 border-fx-line" />
@@ -34,11 +46,11 @@ export function CheckList({ level, compact = false }: { level: LevelDef; compact
             </span>
             <span
               className={`pt-px text-[13px] leading-snug ${
-                status === 'pass' ? 'text-fx-text' : status === 'fail' ? 'text-fx-red' : status === 'running' ? 'text-fx-text' : 'text-fx-muted'
+                status === 'pass' || status === 'running' ? 'text-fx-text' : status === 'fail' ? 'text-fx-red' : status === 'login' ? 'text-fx-amber' : 'text-fx-muted'
               }`}
             >
               {c.label}
-              {status === 'fail' && message && <span className="mt-0.5 block text-xs text-fx-red/80">{message}</span>}
+              {message && status !== 'pass' && <span className="mt-0.5 block text-xs opacity-80">{message}</span>}
             </span>
           </li>
         )

@@ -15,6 +15,7 @@ export function LockedSection({ level, children }: { level: number; children: Re
   const isNext = completed + 1 === level
   const passed = Object.values(results[level] ?? {}).filter((r) => r.status === 'pass').length
   const pending = def.checks.length === 0
+  const needsLogin = Object.values(results[level] ?? {}).some((r) => r.status === 'login')
 
   return (
     <section
@@ -88,7 +89,9 @@ export function LockedSection({ level, children }: { level: number; children: Re
                 </div>
 
                 <div className="mt-5 flex items-start gap-2 text-xs">
-                  {failedLevel === level ? (
+                  {needsLogin ? (
+                    <span className="text-fx-amber">Este nivel necesita una sesión de personal: inicia sesión en «Mi cuenta» (nivel 5) y vuelve a comprobar.</span>
+                  ) : failedLevel === level ? (
                     <span className="text-fx-red">¡Casi! Revisa el punto en rojo y vuelve a intentarlo.</span>
                   ) : isNext ? (
                     <>

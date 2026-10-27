@@ -19,6 +19,12 @@ export type Usuario = {
 
 export type RegistroInput = Pick<Usuario, 'nombre' | 'email' | 'cp'> & { password: string; fechaNacimiento: string; genero: Genero }
 
+export type Rol = 'cliente' | 'trabajador' | 'administrador'
+export const esPersonal = (rol?: string) => rol === 'trabajador' || rol === 'administrador'
+
+// <input type="date"> gives YYYY-MM-DD; the API stores DD/MM/YYYY.
+export const aFechaApi = (iso: string) => iso.split('-').reverse().join('/')
+
 export type Claims = { rol?: string; cargo?: string; exp?: number; iat?: number; [k: string]: unknown }
 
 type LoginResponse = { token: string; usuario: Usuario }

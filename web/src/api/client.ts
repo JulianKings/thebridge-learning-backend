@@ -1,9 +1,7 @@
 import { API_URL } from '../config'
 import { ApiError } from './types'
-import type { Category, Order, Product, Role, Session, Supply, User } from './types'
 
-// Client for the students' API, used by the shop. The endpoints below are a
-// draft for step 7: adjust paths and payloads to whatever the class builds.
+// Shared by every screen that talks to the students' API: base URL, JWT session and error handling.
 
 const TOKEN_KEY = 'hilo-api-token'
 
@@ -72,39 +70,4 @@ export async function call<T>(method: string, path: string, body?: unknown): Pro
   if (!res.ok) throw new ApiError(res.status, data?.message ?? `Error ${res.status}`)
   if (method !== 'GET') notify()
   return data as T
-}
-
-export type ProductQuery = { category?: Category; search?: string; sort?: 'precio-asc' | 'precio-desc' | 'nuevo' }
-export type ProductDetail = Product & { supplyDetails: Supply[] }
-
-const query = (q: Record<string, string | undefined>) => {
-  const qs = new URLSearchParams(Object.entries(q).filter((e): e is [string, string] => !!e[1])).toString()
-  return qs ? `?${qs}` : ''
-}
-
-export const api = {
-  listProducts: (q: ProductQuery = {}) => call<Product[]>('GET', `/api/products${query(q)}`),
-  getProduct: (id: string) => call<ProductDetail>('GET', `/api/products/${id}`),
-  createProduct: (data: Omit<Product, 'id'>) => call<Product>('POST', '/api/products', data),
-  updateProduct: (id: string, data: Partial<Product>) => call<Product>('PUT', `/api/products/${id}`, data),
-  deleteProduct: (id: string) => call<void>('DELETE', `/api/products/${id}`),
-
-  listSupplies: () => call<Supply[]>('GET', '/api/supplies'),
-  createSupply: (data: Omit<Supply, 'id'>) => call<Supply>('POST', '/api/supplies', data),
-  updateSupply: (id: string, data: Partial<Supply>) => call<Supply>('PUT', `/api/supplies/${id}`, data),
-  deleteSupply: (id: string) => call<void>('DELETE', `/api/supplies/${id}`),
-
-  login: (email: string, password: string) => call<Session>('POST', '/api/auth/login', { email, password }),
-  register: (name: string, email: string, password: string) => call<Session>('POST', '/api/auth/register', { name, email, password }),
-  me: () => call<User>('GET', '/api/auth/me'),
-
-  listUsers: () => call<User[]>('GET', '/api/users'),
-  updateUserRole: (id: string, role: Role) => call<User>('PUT', `/api/users/${id}`, { role }),
-  deleteUser: (id: string) => call<void>('DELETE', `/api/users/${id}`),
-
-  createOrder: (items: { productId: string; size: string; qty: number }[], address: string) =>
-    call<Order>('POST', '/api/orders', { items, address }),
-  myOrders: () => call<Order[]>('GET', '/api/orders/mine'),
-  listOrders: () => call<Order[]>('GET', '/api/orders'),
-  updateOrderStatus: (id: string, status: Order['status']) => call<Order>('PUT', `/api/orders/${id}`, { status }),
 }

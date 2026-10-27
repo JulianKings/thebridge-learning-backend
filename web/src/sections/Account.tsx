@@ -1,7 +1,7 @@
 import { useId, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import { useQuery } from '../api/hooks'
-import { authApi, useSession } from '../auth/api'
+import { aFechaApi, authApi, useSession } from '../auth/api'
 import type { Genero, RegistroInput, Usuario } from '../auth/api'
 import { useProgress } from '../progress/ProgressContext'
 import { ErrorBox, toast, toastError } from '../shop/ui'
@@ -14,7 +14,7 @@ const PREVIEW: Usuario & { rol: string } = {
   _id: 'preview',
   nombre: 'Carlos Vidal',
   email: 'carlos@correo.es',
-  fechaNacimiento: '1998-04-12',
+  fechaNacimiento: '12/04/1998',
   genero: 'Hombre',
   cp: '28013',
   puntos: 120,
@@ -50,7 +50,7 @@ function useSubmit() {
   return { busy, run }
 }
 
-function LoginForm() {
+export function LoginForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const { busy, run } = useSubmit()
@@ -68,12 +68,12 @@ function LoginForm() {
   )
 }
 
-function RegistroForm() {
+export function RegistroForm() {
   const [data, setData] = useState<RegistroInput>({ nombre: '', email: '', password: '', fechaNacimiento: '', genero: 'Mujer', cp: '' })
   const set = (patch: Partial<RegistroInput>) => setData((d) => ({ ...d, ...patch }))
   const { busy, run } = useSubmit()
   return (
-    <form onSubmit={(e) => run(e, () => authApi.registro(data), 'Cuenta creada')} className="space-y-5">
+    <form onSubmit={(e) => run(e, () => authApi.registro({ ...data, fechaNacimiento: aFechaApi(data.fechaNacimiento) }), 'Cuenta creada')} className="space-y-5">
       <Field label="Nombre">{(id) => <input id={id} className={inputCls} value={data.nombre} onChange={(e) => set({ nombre: e.target.value })} />}</Field>
       <Field label="Email">{(id) => <input id={id} type="email" className={inputCls} value={data.email} onChange={(e) => set({ email: e.target.value })} />}</Field>
       <Field label="Contraseña">
@@ -112,7 +112,7 @@ function Perfil({ usuario, rol, onLogout }: { usuario: Usuario; rol?: string; on
     ...(usuario.cargo ? [['Cargo', usuario.cargo] as [string, ReactNode]] : []),
     ...(usuario.horario ? [['Horario', usuario.horario] as [string, ReactNode]] : []),
     ...(usuario.puntos !== undefined ? [['Puntos', usuario.puntos] as [string, ReactNode]] : []),
-    ['Nacimiento', usuario.fechaNacimiento?.slice(0, 10) ?? '—'],
+    ['Nacimiento', usuario.fechaNacimiento ?? '—'],
     ['Código postal', usuario.cp ?? '—'],
   ]
   return (

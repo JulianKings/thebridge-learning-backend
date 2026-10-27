@@ -1,9 +1,10 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { Minus, Plus, X } from 'lucide-react'
 import { useQuery } from '../api/hooks'
-import { api } from '../api/client'
-import { Garment } from '../components/Garment'
 import { formatPrice } from '../data/mock'
+import { ropaApi } from '../ropa/api'
+import { ProductoImage } from '../ropa/ProductoImage'
+import { precioFinal, titulo } from '../ropa/types'
 import { useAuth } from './AuthContext'
 import { useCart } from './CartContext'
 import { navigate } from './router'
@@ -11,23 +12,25 @@ import { btnPrimary } from './ui'
 
 export function useCartLines() {
   const { items } = useCart()
-  const { data: products, loading, error } = useQuery(() => api.listProducts(), [])
+  const { data: productos, loading, error } = useQuery(() => ropaApi.list(), [])
   const lines = items.flatMap((i) => {
-    const p = products?.find((x) => x.id === i.productId)
-    return p ? [{ ...i, product: p }] : []
+    const producto = productos?.find((p) => p._id === i.productId)
+    if (!producto) return []
+    const stock = producto.talla.find((t) => t.talla_tipo === i.size)?.talla_stock ?? 0
+    return [{ ...i, producto, stock, precio: precioFinal(producto) }]
   })
-  const total = lines.reduce((s, l) => s + l.product.price * l.qty, 0)
+  const total = Math.round(lines.reduce((s, l) => s + l.precio * l.qty, 0) * 100) / 100
   return { lines, total, loading, error }
 }
 
 export function CartDrawer() {
   const { open, setOpen, setQty, count } = useCart()
-  const { user } = useAuth()
+  const { usuario } = useAuth()
   const { lines, total } = useCartLines()
 
   const checkout = () => {
     setOpen(false)
-    navigate(user ? 'checkout' : 'login/checkout')
+    navigate(usuario ? 'checkout' : 'login/checkout')
   }
 
   return (
@@ -59,9 +62,9 @@ export function CartDrawer() {
               <ul className="flex-1 divide-y divide-line overflow-y-auto px-6">
                 {lines.map((l) => (
                   <li key={`${l.productId}-${l.size}`} className="flex gap-4 py-5">
-                    <Garment kind={l.product.kind} tone={l.product.tone} ink={l.product.ink} className="h-28 w-21 shrink-0" />
+                    <ProductoImage tipo={l.producto.tipo} foto={l.producto.foto} seed={l.producto._id} className="h-28 w-21 shrink-0" />
                     <div className="flex flex-1 flex-col">
-                      <p className="text-[13px] uppercase tracking-wide">{l.product.name}</p>
+                      <p className="text-[13px] uppercase tracking-wide">{titulo(l.producto)}</p>
                       <p className="mt-1 text-xs text-muted">Talla {l.size}</p>
                       <div className="mt-auto flex items-center justify-between">
                         <div className="flex items-center border border-line">
@@ -69,11 +72,16 @@ export function CartDrawer() {
                             <Minus className="h-3 w-3" />
                           </button>
                           <span className="w-6 text-center text-sm">{l.qty}</span>
-                          <button onClick={() => setQty(l.productId, l.size, l.qty + 1)} className="p-2" aria-label="Añadir uno">
+                          <button
+                            onClick={() => setQty(l.productId, l.size, l.qty + 1)}
+                            disabled={l.qty >= l.stock}
+                            className="p-2 disabled:opacity-30"
+                            aria-label="Añadir uno"
+                          >
                             <Plus className="h-3 w-3" />
                           </button>
                         </div>
-                        <span className="text-sm">{formatPrice(l.product.price * l.qty)}</span>
+                        <span className="text-sm">{formatPrice(l.precio * l.qty)}</span>
                       </div>
                     </div>
                   </li>
@@ -87,7 +95,6 @@ export function CartDrawer() {
                   <span className="uppercase tracking-wide">Total</span>
                   <span>{formatPrice(total)}</span>
                 </div>
-                <p className="mt-1 text-xs text-muted">Envío gratuito a partir de 50 €</p>
                 <button onClick={checkout} className={`${btnPrimary} mt-5 w-full`}>
                   Tramitar pedido
                 </button>

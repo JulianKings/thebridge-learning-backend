@@ -1,12 +1,12 @@
 import { ArrowRight } from 'lucide-react'
-import { Garment } from '../components/Garment'
 import { API_URL } from '../config'
-import { PRODUCTS } from '../data/mock'
+import { MOCK_ROPA } from '../ropa/mock'
+import { ProductoImage } from '../ropa/ProductoImage'
 import { useProgress } from '../progress/ProgressContext'
 
 export function Hero() {
   const { statusResponse, checkedAt } = useProgress()
-  const [a, b] = [PRODUCTS[0], PRODUCTS[2]]
+  const [a, b] = [MOCK_ROPA[0], MOCK_ROPA[2]]
   const message = (statusResponse?.body as { message?: string } | null)?.message
 
   const status = [
@@ -34,8 +34,8 @@ export function Hero() {
           </a>
         </div>
         <div className="order-1 grid grid-cols-[1.3fr_1fr] items-end gap-3 lg:order-2">
-          <Garment kind={a.kind} tone={a.tone} ink={a.ink} className="aspect-[3/4]" />
-          <Garment kind={b.kind} tone={b.tone} ink={b.ink} className="aspect-[3/4.4]" />
+          <ProductoImage tipo={a.tipo} foto={a.foto} seed={a._id} className="aspect-[3/4]" />
+          <ProductoImage tipo={b.tipo} foto={b.foto} seed={b._id} className="aspect-[3/4.4]" />
         </div>
       </div>
 

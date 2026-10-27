@@ -1,393 +1,210 @@
-import { AnimatePresence, motion } from 'framer-motion'
-import { Pencil, Plus, Trash2, X } from 'lucide-react'
-import { useState } from 'react'
-import type { FormEvent } from 'react'
+import { useId, useState } from 'react'
+import type { FormEvent, ReactNode } from 'react'
 import { useQuery } from '../../api/hooks'
-import { api } from '../../api/client'
-import type { Order, Product, Role, Supply } from '../../api/types'
-import { Garment } from '../../components/Garment'
-import type { GarmentKind } from '../../data/mock'
+import { aFechaApi } from '../../auth/api'
+import type { Genero, Usuario } from '../../auth/api'
+import { comprasApi, usuariosApi } from '../../compras/api'
+import type { EmpleadoInput } from '../../compras/api'
 import { formatPrice } from '../../data/mock'
+import { ropaApi } from '../../ropa/api'
+import { PrendasPanel } from '../../sections/Backoffice'
 import { useAuth } from '../AuthContext'
-import { navigate, shopHref } from '../router'
+import { shopHref } from '../router'
 import { ErrorBox, btnPrimary, field, toast, toastError } from '../ui'
+import { LineaNombre } from './Checkout'
 
-const KINDS: { kind: GarmentKind; label: string }[] = [
-  { kind: 'coat', label: 'Abrigo' },
-  { kind: 'blazer', label: 'Americana' },
-  { kind: 'shirt', label: 'Camisa' },
-  { kind: 'tee', label: 'Camiseta' },
-  { kind: 'knit', label: 'Punto' },
-  { kind: 'dress', label: 'Vestido' },
-  { kind: 'skirt', label: 'Falda' },
-  { kind: 'trousers', label: 'Pantalón' },
-]
+const nombreCliente = (c: string | Usuario) => (typeof c === 'object' && c ? c.nombre : `Cliente ${String(c).slice(-6)}`)
 
-const blankProduct = (): Omit<Product, 'id'> => ({
-  name: '',
-  description: '',
-  price: 39.95,
-  category: 'Unisex',
-  sizes: ['S', 'M', 'L'],
-  kind: 'tee',
-  tone: '#e4e0d8',
-  ink: '#6f6a60',
-  stock: 10,
-  supplies: [],
-  isNew: true,
+function Loading() {
+  return <p className="text-sm text-muted">Cargando…</p>
+}
+
+function ComprasTab() {
+  const { data, error } = useQuery(() => comprasApi.todas(), [])
+  const { data: productos } = useQuery(() => ropaApi.list(), [])
+  if (error) return <ErrorBox error={error} />
+  if (!data) return <Loading />
+  if (!data.length) return <p className="text-sm text-muted">Todavía no hay compras.</p>
+  return (
+    <ul className="divide-y divide-line border-y border-line">
+      {data.map((c) => (
+        <li key={c._id} className="grid gap-2 py-4 sm:grid-cols-[1fr_auto_auto] sm:items-center sm:gap-8">
+          <div>
+            <p className="text-sm">{nombreCliente(c.cliente)}</p>
+            <p className="text-xs text-muted">
+              {c.productos.map((l, i) => (
+                <span key={i}>
+                  {i > 0 && ', '}
+                  <LineaNombre linea={l} productos={productos} /> ×{l.cantidad}
+                </span>
+              ))}
+            </p>
+          </div>
+          <span className="text-xs text-muted">{c.createdAt ? new Date(c.createdAt).toLocaleDateString('es-ES') : ''}</span>
+          <span className="text-sm">{formatPrice(c.total)}</span>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+function ProveedoresTab() {
+  const { data, error } = useQuery(() => ropaApi.proveedores(), [])
+  if (error) return <ErrorBox error={error} />
+  if (!data) return <Loading />
+  return (
+    <ul className="divide-y divide-line border-y border-line">
+      {data.map((p) => (
+        <li key={p._id} className="grid gap-2 py-4 text-sm sm:grid-cols-[2fr_2fr_1fr_1fr]">
+          <span>
+            {p.nombreComercial}
+            <span className="block text-xs text-muted">{p.email}</span>
+          </span>
+          <span className="text-xs text-muted">{p.condicionesPago}</span>
+          <span className="text-xs">{p.divisa}</span>
+          <span className="text-xs text-muted">{p.descuentosVolumen}% por volumen</span>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+function ClientesTab() {
+  const { data, error } = useQuery(() => usuariosApi.clientes(), [])
+  if (error) return <ErrorBox error={error} />
+  if (!data) return <Loading />
+  return (
+    <ul className="divide-y divide-line border-y border-line">
+      {data.map((c) => (
+        <li key={c._id} className="flex items-center gap-4 py-4 text-sm">
+          <span className="min-w-0 flex-1">
+            {c.nombre}
+            <span className="block truncate text-xs text-muted">{c.email}</span>
+          </span>
+          <span className="text-xs text-muted">CP {c.cp}</span>
+          <span className="w-24 text-right">{c.puntos ?? 0} puntos</span>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+function Field({ label, children }: { label: string; children: (id: string) => ReactNode }) {
+  const id = useId()
+  return (
+    <div className="text-[11px] text-muted">
+      <label htmlFor={id}>{label}</label>
+      {children(id)}
+    </div>
+  )
+}
+
+const CARGOS = ['reponedor', 'dependiente', 'encargado'] as const
+const nuevoEmpleado = (): EmpleadoInput => ({
+  nombre: '',
+  email: '',
+  password: '',
+  fechaNacimiento: '',
+  genero: 'Mujer',
+  cp: '',
+  cargo: 'dependiente',
+  salario: 1300,
+  horario: 'L-V 9:00-17:00',
 })
 
-async function attempt(fn: () => Promise<unknown>, ok: string) {
-  try {
-    await fn()
-    toast(ok)
-    return true
-  } catch (e) {
-    toastError(e)
-    return false
-  }
-}
-
-function ProductEditor({ initial, onClose }: { initial: Product | null; onClose: () => void }) {
-  const [p, setP] = useState<Omit<Product, 'id'>>(() => (initial ? { ...initial } : blankProduct()))
-  const [sizes, setSizes] = useState(p.sizes.join(', '))
+function EmpleadoForm() {
+  const [e, setE] = useState<EmpleadoInput>(nuevoEmpleado)
   const [busy, setBusy] = useState(false)
-  const { data: supplies } = useQuery(() => api.listSupplies(), [])
+  const set = (patch: Partial<EmpleadoInput>) => setE((prev) => ({ ...prev, ...patch }))
 
-  const save = async (e: FormEvent) => {
-    e.preventDefault()
+  const save = async (ev: FormEvent) => {
+    ev.preventDefault()
     setBusy(true)
-    const data = { ...p, sizes: sizes.split(',').map((s) => s.trim()).filter(Boolean) }
-    const ok = await attempt(
-      () => (initial ? api.updateProduct(initial.id, data) : api.createProduct(data)),
-      initial ? 'Prenda actualizada' : 'Prenda creada',
-    )
-    setBusy(false)
-    if (ok) onClose()
-  }
-
-  const toggleSupply = (id: string) =>
-    setP({ ...p, supplies: p.supplies.includes(id) ? p.supplies.filter((s) => s !== id) : [...p.supplies, id] })
-
-  return (
-    <motion.div className="fixed inset-0 z-50" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-      <div className="absolute inset-0 bg-black/30" onClick={onClose} />
-      <motion.form
-        onSubmit={save}
-        className="absolute inset-y-0 right-0 flex w-[min(560px,100vw)] flex-col bg-paper"
-        initial={{ x: '100%' }}
-        animate={{ x: 0 }}
-        exit={{ x: '100%' }}
-        transition={{ type: 'tween', duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-      >
-        <div className="flex items-center justify-between border-b border-line px-6 py-5">
-          <p className="text-[11px] uppercase tracking-[0.2em]">{initial ? 'Editar prenda' : 'Nueva prenda'}</p>
-          <button type="button" onClick={onClose} aria-label="Cerrar">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
-        <div className="flex-1 space-y-6 overflow-y-auto px-6 py-6">
-          <div className="flex gap-5">
-            <Garment kind={p.kind} tone={p.tone} ink={p.ink} className="h-40 w-30 shrink-0" />
-            <div className="grid flex-1 content-start gap-3">
-              <p className="eyebrow">Ilustración</p>
-              <select className={field} value={p.kind} onChange={(e) => setP({ ...p, kind: e.target.value as GarmentKind })} aria-label="Tipo de prenda">
-                {KINDS.map((k) => (
-                  <option key={k.kind} value={k.kind} className="bg-paper">{k.label}</option>
-                ))}
-              </select>
-              <div className="flex gap-4 text-xs text-muted">
-                <label className="flex items-center gap-2">
-                  Fondo <input type="color" value={p.tone} onChange={(e) => setP({ ...p, tone: e.target.value })} />
-                </label>
-                <label className="flex items-center gap-2">
-                  Trazo <input type="color" value={p.ink} onChange={(e) => setP({ ...p, ink: e.target.value })} />
-                </label>
-              </div>
-            </div>
-          </div>
-
-          <label className="block text-[11px] text-muted">
-            Nombre
-            <input className={field} value={p.name} onChange={(e) => setP({ ...p, name: e.target.value })} placeholder="Sudadera de felpa" />
-          </label>
-          <label className="block text-[11px] text-muted">
-            Descripción
-            <textarea className={`${field} resize-none`} rows={2} value={p.description} onChange={(e) => setP({ ...p, description: e.target.value })} />
-          </label>
-          <div className="grid grid-cols-3 gap-4">
-            <label className="text-[11px] text-muted">
-              Precio (€)
-              <input type="number" step="0.01" className={field} value={p.price} onChange={(e) => setP({ ...p, price: Number(e.target.value) })} />
-            </label>
-            <label className="text-[11px] text-muted">
-              Stock
-              <input type="number" className={field} value={p.stock} onChange={(e) => setP({ ...p, stock: Number(e.target.value) })} />
-            </label>
-            <label className="text-[11px] text-muted">
-              Categoría
-              <select className={field} value={p.category} onChange={(e) => setP({ ...p, category: e.target.value as Product['category'] })}>
-                {['Mujer', 'Hombre', 'Unisex'].map((c) => (
-                  <option key={c} className="bg-paper">{c}</option>
-                ))}
-              </select>
-            </label>
-          </div>
-          <label className="block text-[11px] text-muted">
-            Tallas (separadas por comas)
-            <input className={field} value={sizes} onChange={(e) => setSizes(e.target.value)} />
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={!!p.isNew} onChange={(e) => setP({ ...p, isNew: e.target.checked })} /> Marcar como novedad
-          </label>
-
-          <div>
-            <p className="eyebrow">Materiales vinculados</p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {supplies?.map((s) => (
-                <button
-                  type="button"
-                  key={s.id}
-                  onClick={() => toggleSupply(s.id)}
-                  className={`border px-3 py-1.5 text-xs ${p.supplies.includes(s.id) ? 'border-ink bg-ink text-paper' : 'border-line hover:border-ink'}`}
-                >
-                  {s.name}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div className="drawer-footer flex items-center justify-between gap-4 border-t border-line px-6 py-4">
-          <span className="font-mono text-[11px] text-muted">{initial ? `PUT /api/products/${initial.id}` : 'POST /api/products'}</span>
-          <button disabled={busy} className={btnPrimary}>
-            {busy ? 'Guardando…' : 'Guardar'}
-          </button>
-        </div>
-      </motion.form>
-    </motion.div>
-  )
-}
-
-function ProductsTab({ editId }: { editId?: string }) {
-  const { data, error, loading } = useQuery(() => api.listProducts(), [])
-  const [creating, setCreating] = useState(false)
-  const editing = editId ? data?.find((p) => p.id === editId) : undefined
-
-  const close = () => {
-    setCreating(false)
-    if (editId) navigate('gestion/prendas')
-  }
-
-  const remove = (p: Product) => {
-    if (confirm(`¿Eliminar «${p.name}»?`)) attempt(() => api.deleteProduct(p.id), 'Prenda eliminada')
+    try {
+      await usuariosApi.crearEmpleado({ ...e, fechaNacimiento: aFechaApi(e.fechaNacimiento ?? '') })
+      toast('Empleado creado')
+      setE(nuevoEmpleado())
+    } catch (err) {
+      toastError(err)
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (
-    <>
-      <div className="mb-6 flex items-center justify-between">
-        <p className="text-sm text-muted">{data ? `${data.length} prendas en el catálogo` : ''}</p>
-        <button onClick={() => setCreating(true)} className={btnPrimary}>
-          <Plus className="h-4 w-4" /> Nueva prenda
+    <form onSubmit={save} className="mb-8 grid gap-4 border border-line bg-panel p-5 sm:grid-cols-3">
+      <p className="eyebrow sm:col-span-3">Nuevo empleado · POST /empleados</p>
+      <Field label="Nombre">{(id) => <input id={id} className={field} value={e.nombre} onChange={(x) => set({ nombre: x.target.value })} />}</Field>
+      <Field label="Email">{(id) => <input id={id} type="email" className={field} value={e.email} onChange={(x) => set({ email: x.target.value })} />}</Field>
+      <Field label="Contraseña">{(id) => <input id={id} type="password" className={field} value={e.password} onChange={(x) => set({ password: x.target.value })} />}</Field>
+      <Field label="Nacimiento">
+        {(id) => <input id={id} type="date" className={field} value={e.fechaNacimiento} onChange={(x) => set({ fechaNacimiento: x.target.value })} />}
+      </Field>
+      <Field label="Género">
+        {(id) => (
+          <select id={id} className={field} value={e.genero} onChange={(x) => set({ genero: x.target.value as Genero })}>
+            <option className="bg-paper">Mujer</option>
+            <option className="bg-paper">Hombre</option>
+          </select>
+        )}
+      </Field>
+      <Field label="Código postal">{(id) => <input id={id} className={field} value={e.cp} onChange={(x) => set({ cp: x.target.value })} />}</Field>
+      <Field label="Cargo">
+        {(id) => (
+          <select id={id} className={field} value={e.cargo} onChange={(x) => set({ cargo: x.target.value as EmpleadoInput['cargo'] })}>
+            {CARGOS.map((c) => (
+              <option key={c} className="bg-paper">{c}</option>
+            ))}
+          </select>
+        )}
+      </Field>
+      <Field label="Salario (€)">
+        {(id) => <input id={id} type="number" className={field} value={e.salario} onChange={(x) => set({ salario: Number(x.target.value) })} />}
+      </Field>
+      <Field label="Horario">{(id) => <input id={id} className={field} value={e.horario} onChange={(x) => set({ horario: x.target.value })} />}</Field>
+      <div className="sm:col-span-3">
+        <button disabled={busy} className={btnPrimary}>
+          {busy ? 'Creando…' : 'Crear empleado'}
         </button>
       </div>
-      {error ? (
-        <ErrorBox error={error} />
-      ) : loading && !data ? (
-        <p className="text-sm text-muted">Cargando…</p>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[720px] text-left text-sm">
-            <thead>
-              <tr className="eyebrow border-b border-line">
-                <th className="py-3 font-normal">Prenda</th>
-                <th className="py-3 font-normal">Categoría</th>
-                <th className="py-3 font-normal">Precio</th>
-                <th className="py-3 font-normal">Stock</th>
-                <th className="py-3 font-normal">Materiales</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {data?.map((p) => (
-                <tr key={p.id} className="border-b border-line">
-                  <td className="py-3">
-                    <a href={shopHref(`p/${p.id}`)} className="flex items-center gap-3 hover:underline">
-                      <Garment kind={p.kind} tone={p.tone} ink={p.ink} className="h-12 w-9 shrink-0" />
-                      {p.name}
-                      {p.isNew && <span className="text-[10px] uppercase tracking-widest text-muted">Nuevo</span>}
-                    </a>
-                  </td>
-                  <td className="text-muted">{p.category}</td>
-                  <td>{formatPrice(p.price)}</td>
-                  <td className={p.stock < 8 ? 'text-bad' : ''}>{p.stock} ud</td>
-                  <td className="text-xs text-muted">{p.supplies.length}</td>
-                  <td className="text-right">
-                    <a href={shopHref(`gestion/prendas/${p.id}`)} className="inline-block p-2 text-muted hover:text-ink" aria-label={`Editar ${p.name}`}>
-                      <Pencil className="h-4 w-4" />
-                    </a>
-                    <button onClick={() => remove(p)} className="p-2 text-muted hover:text-bad" aria-label={`Eliminar ${p.name}`}>
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-      <AnimatePresence>
-        {(creating || editing) && <ProductEditor key={editing?.id ?? 'new'} initial={editing ?? null} onClose={close} />}
-      </AnimatePresence>
-    </>
+    </form>
   )
 }
 
-function SuppliesTab() {
-  const { data, error } = useQuery(() => api.listSupplies(), [])
-  const { data: products } = useQuery(() => api.listProducts(), [])
-  const [draft, setDraft] = useState<Omit<Supply, 'id'>>({ name: '', supplier: '', stock: 0, unit: 'm' })
-
-  const create = async (e: FormEvent) => {
-    e.preventDefault()
-    if (await attempt(() => api.createSupply(draft), 'Material añadido')) setDraft({ name: '', supplier: '', stock: 0, unit: 'm' })
-  }
-
+function EmpleadosTab() {
+  const { data, error } = useQuery(() => usuariosApi.empleados(), [])
   if (error) return <ErrorBox error={error} />
-
   return (
     <>
-      <form onSubmit={create} className="mb-8 grid items-end gap-4 border border-line bg-panel p-5 sm:grid-cols-[2fr_2fr_1fr_1fr_auto]">
-        <input className={field} placeholder="Material" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
-        <input className={field} placeholder="Proveedor" value={draft.supplier} onChange={(e) => setDraft({ ...draft, supplier: e.target.value })} />
-        <input className={field} type="number" placeholder="Stock" value={draft.stock} onChange={(e) => setDraft({ ...draft, stock: Number(e.target.value) })} />
-        <select className={field} value={draft.unit} onChange={(e) => setDraft({ ...draft, unit: e.target.value })}>
-          {['m', 'kg', 'ud'].map((u) => (
-            <option key={u} className="bg-paper">{u}</option>
-          ))}
-        </select>
-        <button className={btnPrimary}>
-          <Plus className="h-4 w-4" /> Añadir
-        </button>
-      </form>
-      <ul className="divide-y divide-line border-y border-line">
-        {data?.map((s) => {
-          const usedIn = products?.filter((p) => p.supplies.includes(s.id)) ?? []
-          return (
-            <li key={s.id} className="grid items-center gap-3 py-4 sm:grid-cols-[2fr_2fr_auto_auto]">
-              <div>
-                <p className="text-sm">{s.name}</p>
-                <p className="text-xs text-muted">{s.supplier}</p>
-              </div>
-              <p className="text-xs text-muted">
-                {usedIn.length ? `En ${usedIn.length} prendas: ${usedIn.slice(0, 3).map((p) => p.name).join(', ')}${usedIn.length > 3 ? '…' : ''}` : 'Sin vincular'}
-              </p>
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  key={s.stock}
-                  type="number"
-                  defaultValue={s.stock}
-                  onBlur={(e) => Number(e.target.value) !== s.stock && attempt(() => api.updateSupply(s.id, { stock: Number(e.target.value) }), 'Stock actualizado')}
-                  className={`w-20 border-b border-line bg-transparent py-1 text-right outline-none focus:border-ink ${s.stock < 50 ? 'text-bad' : ''}`}
-                  aria-label={`Stock de ${s.name}`}
-                />
-                <span className="text-muted">{s.unit}</span>
-              </label>
-              <button
-                onClick={() => confirm(`¿Eliminar «${s.name}»?`) && attempt(() => api.deleteSupply(s.id), 'Material eliminado')}
-                className="justify-self-end p-2 text-muted hover:text-bad"
-                aria-label={`Eliminar ${s.name}`}
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
+      <EmpleadoForm />
+      {!data ? (
+        <Loading />
+      ) : (
+        <ul className="divide-y divide-line border-y border-line">
+          {data.map((e) => (
+            <li key={e._id} className="flex items-center gap-4 py-4 text-sm">
+              <span className="min-w-0 flex-1">
+                {e.nombre}
+                <span className="block truncate text-xs text-muted">{e.email}</span>
+              </span>
+              <span className="text-xs text-muted">{e.horario}</span>
+              <span className="w-28 text-right text-[11px] uppercase tracking-[0.15em]">{e.cargo}</span>
             </li>
-          )
-        })}
-      </ul>
+          ))}
+        </ul>
+      )}
     </>
-  )
-}
-
-const STATUSES: Order['status'][] = ['Pagado', 'Enviado', 'Entregado']
-
-function OrdersTab() {
-  const { data, error } = useQuery(() => api.listOrders(), [])
-  if (error) return <ErrorBox error={error} />
-  return (
-    <ul className="divide-y divide-line border-y border-line">
-      {data?.map((o) => (
-        <li key={o.id} className="grid items-center gap-2 py-4 sm:grid-cols-[1fr_auto_auto] sm:gap-8">
-          <div>
-            <p className="text-sm">
-              #{o.id.slice(1)} · {o.customer}
-            </p>
-            <p className="text-xs text-muted">
-              {o.items.map((i) => `${i.name} ×${i.qty}`).join(', ')} · {o.address}
-            </p>
-          </div>
-          <span className="text-sm">{formatPrice(o.total)}</span>
-          <select
-            value={o.status}
-            onChange={(e) => attempt(() => api.updateOrderStatus(o.id, e.target.value as Order['status']), 'Pedido actualizado')}
-            className="bg-transparent text-[11px] uppercase tracking-[0.15em] outline-none"
-            aria-label={`Estado del pedido ${o.id}`}
-          >
-            {STATUSES.map((s) => (
-              <option key={s} className="bg-paper">{s}</option>
-            ))}
-          </select>
-        </li>
-      ))}
-    </ul>
-  )
-}
-
-function UsersTab() {
-  const { user: me } = useAuth()
-  const { data, error } = useQuery(() => api.listUsers(), [])
-  if (error) return <ErrorBox error={error} />
-  return (
-    <ul className="divide-y divide-line border-y border-line">
-      {data?.map((u) => (
-        <li key={u.id} className="flex items-center gap-4 py-4">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-paper-2 text-xs">
-            {u.name.split(' ').map((w) => w[0]).join('').slice(0, 2)}
-          </span>
-          <span className="min-w-0 flex-1 text-sm">
-            {u.name} {u.id === me?.id && <span className="text-xs text-muted">(tú)</span>}
-            <span className="block truncate text-xs text-muted">{u.email}</span>
-          </span>
-          <select
-            value={u.role}
-            onChange={(e) => attempt(() => api.updateUserRole(u.id, e.target.value as Role), 'Rol actualizado')}
-            className="bg-transparent text-[11px] uppercase tracking-[0.15em] outline-none"
-            aria-label={`Rol de ${u.name}`}
-          >
-            {['cliente', 'trabajador', 'encargado'].map((r) => (
-              <option key={r} value={r} className="bg-paper">{r}</option>
-            ))}
-          </select>
-          <button
-            onClick={() => confirm(`¿Dar de baja a ${u.name}?`) && attempt(() => api.deleteUser(u.id), 'Usuario eliminado')}
-            className="p-2 text-muted hover:text-bad"
-            aria-label={`Eliminar ${u.name}`}
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
-        </li>
-      ))}
-    </ul>
   )
 }
 
 export function Manage({ tab = 'prendas', id }: { tab?: string; id?: string }) {
-  const { isManager } = useAuth()
+  const { isAdmin } = useAuth()
   const tabs = [
     { key: 'prendas', label: 'Prendas' },
-    { key: 'materiales', label: 'Materiales' },
-    { key: 'pedidos', label: 'Pedidos' },
-    { key: 'usuarios', label: isManager ? 'Usuarios' : 'Usuarios 🔒' },
+    { key: 'compras', label: 'Compras' },
+    { key: 'proveedores', label: 'Proveedores' },
+    { key: 'clientes', label: isAdmin ? 'Clientes' : 'Clientes 🔒' },
+    { key: 'empleados', label: isAdmin ? 'Empleados' : 'Empleados 🔒' },
   ]
 
   return (
@@ -406,10 +223,11 @@ export function Manage({ tab = 'prendas', id }: { tab?: string; id?: string }) {
         ))}
       </nav>
       <div className="mt-8">
-        {tab === 'prendas' && <ProductsTab editId={id} />}
-        {tab === 'materiales' && <SuppliesTab />}
-        {tab === 'pedidos' && <OrdersTab />}
-        {tab === 'usuarios' && <UsersTab />}
+        {tab === 'prendas' && <PrendasPanel editId={id} />}
+        {tab === 'compras' && <ComprasTab />}
+        {tab === 'proveedores' && <ProveedoresTab />}
+        {tab === 'clientes' && <ClientesTab />}
+        {tab === 'empleados' && <EmpleadosTab />}
       </div>
     </div>
   )

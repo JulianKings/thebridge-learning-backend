@@ -75,6 +75,17 @@ const GRUPO_DE: Partial<Record<Tipo, Grupo>> = {
 
 export const grupoDe = (tipo: Tipo): Grupo => GRUPO_DE[tipo] ?? 'Más'
 
+export const GRUPO_SLUG: Record<Grupo, string> = {
+  'Parte de arriba': 'arriba',
+  'Parte de abajo': 'abajo',
+  'Vestidos y conjuntos': 'vestidos',
+  Calzado: 'calzado',
+  Accesorios: 'accesorios',
+  Más: 'mas',
+}
+
+export const grupoPorSlug = (slug?: string) => GRUPOS.find((g) => GRUPO_SLUG[g] === slug)
+
 // `proveedor` comes back as an ObjectId unless the API populates it, so fall back to the list.
 export const nombreProveedor = (p: Pick<Producto, 'proveedor'>, proveedores: Proveedor[] = []) =>
   typeof p.proveedor === 'object' && p.proveedor

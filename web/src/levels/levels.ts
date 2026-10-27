@@ -9,7 +9,11 @@ export type CheckContext = {
   send: (method: string, path: string, body?: unknown, headers?: Record<string, string>) => Promise<ApiResponse>
   // Shared by the checks of one level, e.g. the id of a product created by an earlier check.
   state: Record<string, unknown>
+  // Whoever is logged in on "Mi cuenta": staff-only checks run with this session, never with stored credentials.
+  session: Session | null
 }
+
+export type Session = { token: string; rol?: string }
 
 export type CheckDef = {
   id: string
@@ -34,6 +38,15 @@ export type LevelDef = {
 }
 
 export class CheckFailed extends Error {}
+// Can't be verified right now but isn't the students' fault (e.g. a route protected in level 6); doesn't block the level.
+export class CheckSkipped extends Error {}
+// Needs someone logged in with a given role on "Mi cuenta"; blocks the level until then.
+export class NeedsLogin extends Error {}
+
+// A body sent as-is, to test how the API copes with malformed JSON.
+export class RawBody {
+  constructor(public text: string) {}
+}
 
 export async function request(path: string, method = 'GET', body?: unknown, headers: Record<string, string> = {}): Promise<ApiResponse> {
   const start = performance.now()
@@ -42,7 +55,7 @@ export async function request(path: string, method = 'GET', body?: unknown, head
     res = await fetch(`${API_URL}${path}`, {
       method,
       headers: { ...(body !== undefined && { 'Content-Type': 'application/json' }), ...headers },
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      body: body instanceof RawBody ? body.text : body !== undefined ? JSON.stringify(body) : undefined,
       signal: AbortSignal.timeout(8000),
     })
   } catch {
@@ -80,7 +93,7 @@ const testProducto = (proveedor: string) => ({
   proveedor,
 })
 
-type CrudState = { proveedor?: string; id?: string; created?: string[] }
+type CrudState = { proveedor?: string; id?: string; created?: string[]; protegido?: boolean }
 const crud = (ctx: CheckContext) => ctx.state as CrudState
 const track = (ctx: CheckContext, id: string) => (crud(ctx).created ??= []).push(id)
 
@@ -154,12 +167,63 @@ function storeCliente(c: TestCliente) {
 
 const randomId = () => Math.random().toString(36).slice(2, 10)
 const newCliente = (): TestCliente => ({ nombre: 'Cliente de prueba', email: `check.${randomId()}@thebridge.test`, password: `Check-${randomId()}` })
-const registroBody = (c: TestCliente) => ({ ...c, fechaNacimiento: '2000-01-01', genero: 'Mujer', cp: '28013' })
+const registroBody = (c: TestCliente) => ({ ...c, fechaNacimiento: '01/01/2000', genero: 'Mujer', cp: '28013' })
 const includesPassword = (body: unknown) => JSON.stringify(body ?? null).includes('"password"')
 const bearer = (token: string) => ({ Authorization: `Bearer ${token}` })
 
 type AuthState = { cliente?: TestCliente; token?: string }
 const auth = (ctx: CheckContext) => ctx.state as AuthState
+
+const STAFF = ['trabajador', 'administrador']
+const staffToken = (ctx: CheckContext) => (ctx.session && STAFF.includes(ctx.session.rol ?? '') ? ctx.session.token : null)
+const asStaff = (ctx: CheckContext) => {
+  const token = staffToken(ctx)
+  return token ? bearer(token) : {}
+}
+
+function requireStaff(ctx: CheckContext, why: string) {
+  const token = staffToken(ctx)
+  if (!token) throw new NeedsLogin(`Inicia sesión como empleado o administrador en «Mi cuenta» ${why}`)
+  return bearer(token)
+}
+
+async function primerProveedor(ctx: CheckContext) {
+  const res = await ctx.get('/proveedores')
+  expectStatus(res, [200], 'GET /proveedores')
+  const id = Array.isArray(res.body) ? field(res.body[0], '_id') : undefined
+  if (!isObjectId(id)) throw new CheckFailed('GET /proveedores no devuelve ningún proveedor con _id')
+  return id
+}
+
+async function loginTestCliente(ctx: CheckContext) {
+  const cliente = storedCliente()
+  if (!cliente) throw new CheckFailed('No encontramos el cliente de prueba del nivel 5: vuelve a comprobar ese nivel')
+  const res = await ctx.send('POST', '/auth/login', { email: cliente.email, password: cliente.password })
+  expectStatus(res, [200], 'Login del cliente de prueba')
+  const token = field(res.body, 'token')
+  if (typeof token !== 'string') throw new CheckFailed('El login no devuelve "token"')
+  return token
+}
+
+async function puntosDe(ctx: CheckContext, token: string) {
+  const res = await ctx.send('GET', '/auth/perfil', undefined, bearer(token))
+  expectStatus(res, [200], 'GET /auth/perfil')
+  return Number(field(res.body, 'puntos') ?? 0)
+}
+
+const listOf = (res: ApiResponse) => (Array.isArray(res.body) ? res.body : null)
+
+function expectNoPasswords(res: ApiResponse, what: string) {
+  if (!Array.isArray(res.body)) throw new CheckFailed(`${what} debería devolver una lista`)
+  if (includesPassword(res.body)) throw new CheckFailed(`${what} incluye contraseñas: quítalas de la respuesta`)
+}
+
+async function borrarCreadas(ctx: CheckContext) {
+  for (const id of crud(ctx).created ?? []) await ctx.send('DELETE', `/ropa/${id}`, undefined, asStaff(ctx)).catch(() => {})
+}
+
+type TiendaState = CrudState & { compra?: string; puntos?: number; cliente?: string }
+const tienda = (ctx: CheckContext) => ctx.state as TiendaState
 
 export const LEVELS: LevelDef[] = [
   {
@@ -249,11 +313,13 @@ export const LEVELS: LevelDef[] = [
         id: 'create',
         label: 'POST /ropa crea una prenda (201)',
         run: async (ctx) => {
-          const proveedores = await ctx.get('/proveedores')
-          expectStatus(proveedores, [200], 'GET /proveedores')
-          const proveedor = Array.isArray(proveedores.body) ? field(proveedores.body[0], '_id') : undefined
-          if (!isObjectId(proveedor)) throw new CheckFailed('GET /proveedores no devuelve ningún proveedor con _id')
-          const res = await ctx.send('POST', '/ropa', testProducto(proveedor))
+          const proveedor = await primerProveedor(ctx)
+          const res = await ctx.send('POST', '/ropa', testProducto(proveedor), asStaff(ctx))
+          // Once level 6 protects writes, anonymous visitors can't run the CRUD; that's progress, not a regression.
+          if ([401, 403].includes(res.status) && !staffToken(ctx)) {
+            crud(ctx).protegido = true
+            throw new CheckSkipped('Ruta protegida: inicia sesión como empleado en «Mi cuenta» para comprobar el CRUD completo')
+          }
           const id = field(res.body, '_id')
           if (res.status === 201 && isObjectId(id)) track(ctx, id)
           expectStatus(res, [201], 'POST /ropa')
@@ -265,6 +331,7 @@ export const LEVELS: LevelDef[] = [
         id: 'read',
         label: 'GET /ropa/:id devuelve la prenda creada',
         run: async (ctx) => {
+          if (crud(ctx).protegido) throw new CheckSkipped('Pendiente: inicia sesión como empleado para comprobarlo')
           const { id, proveedor } = crud(ctx)
           const res = await ctx.send('GET', `/ropa/${id}`)
           expectStatus(res, [200], 'GET /ropa/:id')
@@ -279,8 +346,9 @@ export const LEVELS: LevelDef[] = [
         id: 'update',
         label: 'PUT /ropa/:id la modifica',
         run: async (ctx) => {
+          if (crud(ctx).protegido) throw new CheckSkipped('Pendiente: inicia sesión como empleado para comprobarlo')
           const { id, proveedor } = crud(ctx)
-          expectStatus(await ctx.send('PUT', `/ropa/${id}`, { ...testProducto(proveedor!), precio: 49.95 }), [200], 'PUT /ropa/:id')
+          expectStatus(await ctx.send('PUT', `/ropa/${id}`, { ...testProducto(proveedor!), precio: 49.95 }, asStaff(ctx)), [200], 'PUT /ropa/:id')
           const after = await ctx.send('GET', `/ropa/${id}`)
           if (field(after.body, 'precio') !== 49.95) throw new CheckFailed('El cambio de precio no se ha guardado')
         },
@@ -289,8 +357,9 @@ export const LEVELS: LevelDef[] = [
         id: 'delete',
         label: 'DELETE /ropa/:id la elimina',
         run: async (ctx) => {
+          if (crud(ctx).protegido) throw new CheckSkipped('Pendiente: inicia sesión como empleado para comprobarlo')
           const { id } = crud(ctx)
-          expectStatus(await ctx.send('DELETE', `/ropa/${id}`), [200, 204], 'DELETE /ropa/:id')
+          expectStatus(await ctx.send('DELETE', `/ropa/${id}`, undefined, asStaff(ctx)), [200, 204], 'DELETE /ropa/:id')
           expectStatus(await ctx.send('GET', `/ropa/${id}`), [404], 'GET de una prenda borrada')
           crud(ctx).created = crud(ctx).created?.filter((c) => c !== id)
         },
@@ -299,6 +368,7 @@ export const LEVELS: LevelDef[] = [
         id: 'validate',
         label: 'Rechaza datos inválidos (400)',
         run: async (ctx) => {
+          if (crud(ctx).protegido) throw new CheckSkipped('Pendiente: inicia sesión como empleado para comprobarlo')
           const valid = testProducto(crud(ctx).proveedor!)
           const { temporada: _omit, ...withoutTemporada } = valid
           const cases: [string, unknown, number[]][] = [
@@ -308,7 +378,7 @@ export const LEVELS: LevelDef[] = [
             ['un proveedor que no existe', { ...valid, proveedor: MISSING_ID }, [400, 404]],
           ]
           for (const [what, body, expected] of cases) {
-            const res = await ctx.send('POST', '/ropa', body)
+            const res = await ctx.send('POST', '/ropa', body, asStaff(ctx))
             const id = field(res.body, '_id')
             if (isObjectId(id)) track(ctx, id)
             expectStatus(res, expected, `POST /ropa con ${what}`)
@@ -324,9 +394,7 @@ export const LEVELS: LevelDef[] = [
         },
       },
     ],
-    cleanup: async (ctx) => {
-      for (const id of crud(ctx).created ?? []) await ctx.send('DELETE', `/ropa/${id}`).catch(() => {})
-    },
+    cleanup: borrarCreadas,
   },
   {
     id: 4,
@@ -478,20 +546,230 @@ export const LEVELS: LevelDef[] = [
     key: 'mejoras',
     title: 'Mejoras',
     short: 'Mejoras',
-    tagline: 'Postman, CORS y pulido',
-    goal: 'Prueba la API con Postman, configura CORS solo para esta web y pule las respuestas y los errores.',
-    reward: 'Búsqueda, filtros y paginación en el catálogo.',
-    checks: [],
+    tagline: 'Rutas protegidas, CORS y consultas',
+    goal: 'Protege las rutas por rol, limita CORS a esta web, filtra y pagina el catálogo y responde siempre los errores en JSON.',
+    reward: 'Filtros por tipo y paginación en el catálogo, servidos por vuestra API.',
+    writes: true,
+    checks: [
+      {
+        id: 'json-404',
+        label: 'Una ruta que no existe devuelve 404 en JSON',
+        run: async (ctx) => {
+          const res = await ctx.send('GET', '/ruta-que-no-existe')
+          expectStatus(res, [404], 'GET /ruta-que-no-existe')
+          if (typeof field(res.body, 'message') !== 'string') throw new CheckFailed('Devuelve 404, pero no un JSON con "message"')
+        },
+      },
+      {
+        id: 'json-400',
+        label: 'Un JSON mal formado devuelve 400 en JSON',
+        run: async (ctx) => {
+          const res = await ctx.send('POST', '/ropa', new RawBody('{"tipo": '))
+          expectStatus(res, [400], 'POST /ropa con un JSON roto')
+          if (typeof field(res.body, 'message') !== 'string') throw new CheckFailed('Devuelve 400, pero no un JSON con "message"')
+        },
+      },
+      {
+        id: 'filtro',
+        label: 'GET /ropa?tipo= filtra por tipo',
+        run: async (ctx) => {
+          const todas = listOf(await ctx.get('/ropa')) ?? []
+          const tipo = field(todas[0], 'tipo')
+          if (typeof tipo !== 'string') throw new CheckFailed('Necesitamos alguna prenda en el catálogo para probar el filtro')
+          const res = await ctx.get(`/ropa?tipo=${encodeURIComponent(tipo)}`)
+          expectStatus(res, [200], 'GET /ropa?tipo=')
+          const filtradas = listOf(res)
+          if (!filtradas?.length) throw new CheckFailed(`GET /ropa?tipo=${tipo} debería devolver al menos una prenda`)
+          if (filtradas.some((p) => field(p, 'tipo') !== tipo)) throw new CheckFailed(`GET /ropa?tipo=${tipo} devuelve prendas de otros tipos`)
+        },
+      },
+      {
+        id: 'paginacion',
+        label: 'GET /ropa?page=&limit= pagina los resultados',
+        run: async (ctx) => {
+          if ((listOf(await ctx.get('/ropa')) ?? []).length < 2) throw new CheckFailed('Necesitamos al menos 2 prendas para comprobar la paginación')
+          const [p1, p2] = await Promise.all([ctx.get('/ropa?page=1&limit=1'), ctx.get('/ropa?page=2&limit=1')])
+          const [a, b] = [listOf(p1), listOf(p2)]
+          if (a?.length !== 1 || b?.length !== 1) throw new CheckFailed('Con limit=1 cada página debería traer exactamente 1 prenda')
+          if (field(a[0], '_id') === field(b[0], '_id')) throw new CheckFailed('La página 2 devuelve la misma prenda que la página 1')
+        },
+      },
+      {
+        id: 'sin-token',
+        label: 'Escribir en /ropa sin token devuelve 401',
+        run: async (ctx) => {
+          const res = await ctx.send('POST', '/ropa', testProducto(await primerProveedor(ctx)))
+          const id = field(res.body, '_id')
+          if (isObjectId(id)) track(ctx, id)
+          expectStatus(res, [401], 'POST /ropa sin token')
+        },
+      },
+      {
+        id: 'cliente-403',
+        label: 'Un cliente no puede crear prendas (403)',
+        run: async (ctx) => {
+          const res = await ctx.send('POST', '/ropa', testProducto(await primerProveedor(ctx)), bearer(await loginTestCliente(ctx)))
+          const id = field(res.body, '_id')
+          if (isObjectId(id)) track(ctx, id)
+          expectStatus(res, [403], 'POST /ropa con el token de un cliente')
+        },
+      },
+      {
+        id: 'proveedores',
+        label: 'Solo un administrador modifica proveedores (401 / 403)',
+        run: async (ctx) => {
+          expectStatus(await ctx.send('POST', '/proveedores', {}), [401], 'POST /proveedores sin token')
+          expectStatus(await ctx.send('POST', '/proveedores', {}, bearer(await loginTestCliente(ctx))), [403], 'POST /proveedores con el token de un cliente')
+        },
+      },
+      {
+        id: 'empleado',
+        label: 'Un empleado con sesión sí puede crear y borrar prendas',
+        run: async (ctx) => {
+          const staff = requireStaff(ctx, 'para comprobar que el personal sí puede escribir')
+          const res = await ctx.send('POST', '/ropa', testProducto(await primerProveedor(ctx)), staff)
+          const id = field(res.body, '_id')
+          if (isObjectId(id)) track(ctx, id)
+          expectStatus(res, [201], 'POST /ropa con sesión de empleado')
+          expectStatus(await ctx.send('DELETE', `/ropa/${id}`, undefined, staff), [200, 204], 'DELETE /ropa/:id con sesión de empleado')
+          crud(ctx).created = crud(ctx).created?.filter((c) => c !== id)
+        },
+      },
+      {
+        id: 'cors',
+        label: 'CORS limitado a esta web',
+        run: async () => {
+          // Browsers refuse credentialed requests to "*", so this only succeeds when CORS names this site.
+          const ok = await fetch(`${API_URL}/status`, { credentials: 'include', signal: AbortSignal.timeout(8000) }).then(
+            (r) => r.ok,
+            () => false,
+          )
+          if (!ok) throw new CheckFailed(`CORS sigue abierto a cualquier origen: usa cors({ origin: '${location.origin}', credentials: true })`)
+        },
+      },
+    ],
+    cleanup: borrarCreadas,
   },
   {
     id: 7,
     key: 'completa',
     title: 'Tienda completa',
     short: 'Final',
-    tagline: 'Todos los endpoints',
-    goal: 'Añade los endpoints que faltan: materiales, pedidos y gestión de usuarios.',
+    tagline: 'Compras, puntos y administración',
+    goal: 'Guarda las compras de los clientes, descuenta el stock, suma puntos y deja la gestión de clientes y empleados al administrador.',
     reward: 'La tienda al completo, funcionando con vuestra API.',
-    checks: [],
+    writes: true,
+    checks: [
+      {
+        id: 'compra-401',
+        label: 'POST /compras sin token devuelve 401',
+        run: async (ctx) => expectStatus(await ctx.send('POST', '/compras', { productos: [] }), [401], 'POST /compras sin token'),
+      },
+      {
+        id: 'compra',
+        label: 'Un cliente compra una prenda (201)',
+        run: async (ctx) => {
+          const staff = requireStaff(ctx, 'para crear la prenda de prueba que vamos a comprar')
+          const prenda = await ctx.send('POST', '/ropa', testProducto(await primerProveedor(ctx)), staff)
+          const id = field(prenda.body, '_id')
+          if (isObjectId(id)) track(ctx, id)
+          expectStatus(prenda, [201], 'Crear la prenda de prueba')
+          const cliente = await loginTestCliente(ctx)
+          const puntos = await puntosDe(ctx, cliente)
+          const res = await ctx.send('POST', '/compras', { productos: [{ producto: id, talla: 'M', cantidad: 2 }] }, bearer(cliente))
+          expectStatus(res, [201], 'POST /compras')
+          const compra = field(res.body, '_id')
+          if (!isObjectId(compra)) throw new CheckFailed('La respuesta no incluye el _id de la compra')
+          if (!(Number(field(res.body, 'total')) > 0)) throw new CheckFailed('La compra debería incluir su "total"')
+          Object.assign(tienda(ctx), { id, compra, puntos, cliente })
+        },
+      },
+      {
+        id: 'stock',
+        label: 'La compra descuenta el stock de esa talla',
+        run: async (ctx) => {
+          const res = await ctx.send('GET', `/ropa/${tienda(ctx).id}`)
+          const talla = (field(res.body, 'talla') as unknown[] | undefined)?.find((t) => field(t, 'talla_tipo') === 'M')
+          const stock = field(talla, 'talla_stock')
+          if (stock !== 3) throw new CheckFailed(`Había 5 en la talla M y se compraron 2: esperábamos 3 y hay ${JSON.stringify(stock ?? null)}`)
+        },
+      },
+      {
+        id: 'puntos',
+        label: 'La compra suma puntos al cliente',
+        run: async (ctx) => {
+          const { puntos, cliente } = tienda(ctx)
+          const ahora = await puntosDe(ctx, cliente!)
+          if (!(ahora > puntos!)) throw new CheckFailed(`Los puntos del cliente no han aumentado (tenía ${puntos}, tiene ${ahora})`)
+          tienda(ctx).puntos = ahora
+        },
+      },
+      {
+        id: 'historial',
+        label: 'GET /compras/mias incluye la compra',
+        run: async (ctx) => {
+          const res = await ctx.send('GET', '/compras/mias', undefined, bearer(tienda(ctx).cliente!))
+          expectStatus(res, [200], 'GET /compras/mias')
+          if (!listOf(res)?.some((c) => field(c, '_id') === tienda(ctx).compra)) throw new CheckFailed('La compra que acabamos de hacer no aparece en GET /compras/mias')
+        },
+      },
+      {
+        id: 'sin-stock',
+        label: 'Comprar más de lo que hay se rechaza y no suma puntos',
+        run: async (ctx) => {
+          const { id, cliente, puntos } = tienda(ctx)
+          const res = await ctx.send('POST', '/compras', { productos: [{ producto: id, talla: 'M', cantidad: 99 }] }, bearer(cliente!))
+          expectStatus(res, [400, 409], 'POST /compras con más unidades que stock')
+          const ahora = await puntosDe(ctx, cliente!)
+          if (ahora !== puntos) throw new CheckFailed(`Una compra rechazada ha cambiado los puntos (de ${puntos} a ${ahora})`)
+        },
+      },
+      {
+        id: 'compras-privadas',
+        label: 'GET /compras es solo para el personal (401 / 403)',
+        run: async (ctx) => {
+          expectStatus(await ctx.send('GET', '/compras'), [401], 'GET /compras sin token')
+          expectStatus(await ctx.send('GET', '/compras', undefined, bearer(tienda(ctx).cliente!)), [403], 'GET /compras con el token de un cliente')
+        },
+      },
+      {
+        id: 'usuarios-privados',
+        label: 'Clientes y empleados solo los gestiona un administrador',
+        run: async (ctx) => {
+          const cliente = bearer(tienda(ctx).cliente!)
+          expectStatus(await ctx.send('GET', '/clientes'), [401], 'GET /clientes sin token')
+          expectStatus(await ctx.send('GET', '/clientes', undefined, cliente), [403], 'GET /clientes con el token de un cliente')
+          expectStatus(await ctx.send('POST', '/empleados', {}, cliente), [403], 'POST /empleados con el token de un cliente')
+        },
+      },
+      {
+        id: 'admin',
+        label: 'Un administrador ve clientes y empleados sin contraseñas',
+        run: async (ctx) => {
+          if (ctx.session?.rol !== 'administrador') throw new NeedsLogin('Inicia sesión como administrador en «Mi cuenta» para comprobar la gestión de usuarios')
+          const admin = bearer(ctx.session.token)
+          for (const ruta of ['/clientes', '/empleados']) {
+            const res = await ctx.send('GET', ruta, undefined, admin)
+            expectStatus(res, [200], `GET ${ruta} como administrador`)
+            expectNoPasswords(res, `GET ${ruta}`)
+          }
+        },
+      },
+      {
+        id: 'docs',
+        label: 'Swagger documenta compras y gestión de usuarios',
+        run: async (ctx) =>
+          expectDocumented(await getSpec(ctx), [
+            ['POST', '/compras'],
+            ['GET', '/compras/mias'],
+            ['GET', '/compras'],
+            ['GET', '/clientes'],
+            ['GET', '/empleados'],
+            ['POST', '/empleados'],
+          ]),
+      },
+    ],
+    cleanup: borrarCreadas,
   },
 ]
 

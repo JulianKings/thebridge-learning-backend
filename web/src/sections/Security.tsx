@@ -10,18 +10,19 @@ const EXAMPLE_TOKEN =
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY3MThiMDAwMDAwMDAwMDAwMDAwMDAwMSIsInJvbCI6ImNsaWVudGUiLCJpYXQiOjE3OTIxNDEyMDAsImV4cCI6MTc5MjE0NDgwMH0.Qm9uZGFkX2hpbG9fc2VjcmV0b19ub19jb21wYXJ0aXI'
 const EXAMPLE_CLAIMS: Claims = { id: '6718b0000000000000000001', rol: 'cliente', iat: 1792141200, exp: 1792144800 }
 
-const ROLES = ['Cliente', 'Trabajador', 'Encargado'] as const
+const ROLES = ['Cliente', 'Empleado', 'Administrador'] as const
 
 const PERMISSIONS: { action: string; roles: [boolean, boolean, boolean] }[] = [
   { action: 'Ver el catálogo', roles: [true, true, true] },
-  { action: 'Registrarse y comprar', roles: [true, false, false] },
+  { action: 'Comprar y acumular puntos', roles: [true, false, false] },
   { action: 'Crear y editar prendas', roles: [false, true, true] },
-  { action: 'Gestionar proveedores', roles: [false, false, true] },
-  { action: 'Gestionar empleados y clientes', roles: [false, false, true] },
+  { action: 'Ver todas las compras', roles: [false, true, true] },
+  { action: 'Modificar proveedores', roles: [false, false, true] },
+  { action: 'Gestionar clientes y empleados', roles: [false, false, true] },
 ]
 
 const columnOf = (claims: Claims | null) =>
-  claims?.rol === 'cliente' ? 0 : claims?.rol === 'trabajador' ? (claims.cargo === 'encargado' ? 2 : 1) : null
+  claims?.rol === 'cliente' ? 0 : claims?.rol === 'trabajador' ? 1 : claims?.rol === 'administrador' ? 2 : null
 
 function useSecondsLeft(exp: number | undefined) {
   const [now, setNow] = useState(() => Date.now())
@@ -112,7 +113,7 @@ export function Security() {
               ))}
             </tbody>
           </table>
-          {live && <p className="mt-2 text-xs text-muted">Las rutas todavía no están protegidas por rol: llegará en un próximo paso.</p>}
+          {live && !isUnlocked(6) && <p className="mt-2 text-xs text-muted">Las rutas aún no están protegidas por rol: es parte del nivel 6.</p>}
 
           <p className="eyebrow mt-8">Comprobaciones de autenticación</p>
           <ul className="mt-3 space-y-1.5 text-xs">

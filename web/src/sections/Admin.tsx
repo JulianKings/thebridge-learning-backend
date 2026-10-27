@@ -1,80 +1,77 @@
-import { Trash2 } from 'lucide-react'
-import { useState } from 'react'
-import { Garment } from '../components/Garment'
-import { PRODUCTS, SUPPLIES, USERS } from '../data/mock'
 import { useProgress } from '../progress/ProgressContext'
+import { formatPrice } from '../data/mock'
+import { MOCK_PROVEEDORES } from '../ropa/mock'
 import { SectionHeading } from './SectionHeading'
 
-function Supplies() {
-  const [selected, setSelected] = useState(PRODUCTS[0].id)
-  const product = PRODUCTS.find((p) => p.id === selected)!
+const CLIENTES = [
+  { nombre: 'Ana Ortega', email: 'ana@correo.es', puntos: 340 },
+  { nombre: 'Carlos Vidal', email: 'carlos@correo.es', puntos: 125 },
+  { nombre: 'Marta Gil', email: 'marta@correo.es', puntos: 60 },
+]
 
-  return (
-    <div>
-      <p className="font-display text-2xl">Materiales</p>
-      <p className="mt-1 text-sm text-muted">Elige una prenda y vincula los materiales con los que se fabrica.</p>
-      <div className="mt-5 flex gap-2 overflow-x-auto pb-2">
-        {PRODUCTS.map((p) => (
-          <button
-            key={p.id}
-            onClick={() => setSelected(p.id)}
-            className={`shrink-0 border-2 ${p.id === selected ? 'border-ink' : 'border-transparent'}`}
-            aria-label={p.name}
-          >
-            <Garment kind={p.kind} tone={p.tone} ink={p.ink} className="h-16 w-12" />
-          </button>
-        ))}
-      </div>
-      <p className="mt-3 text-sm uppercase tracking-wide">{product.name}</p>
-      <ul className="mt-3 divide-y divide-line border-y border-line">
-        {SUPPLIES.map((s) => (
-          <li key={s.id} className="flex items-center gap-4 py-3">
-            <input type="checkbox" readOnly checked={product.supplies.includes(s.id)} className="h-4 w-4 accent-ink" aria-label={s.name} />
-            <span className="flex-1 text-sm">
-              {s.name}
-              <span className="block text-xs text-muted">{s.supplier}</span>
-            </span>
-            <span className={`font-mono text-xs ${s.stock < 50 ? 'text-bad' : 'text-muted'}`}>
-              {s.stock} {s.unit}
-            </span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  )
-}
+const COMPRAS = [
+  { cliente: 'Ana Ortega', resumen: 'Abrigo · Otoño-Invierno (M × 1)', total: 189, puntos: 189 },
+  { cliente: 'Carlos Vidal', resumen: 'Camisa · Primavera-Verano (L × 2)', total: 79.92, puntos: 79 },
+  { cliente: 'Marta Gil', resumen: 'Gorra · Todo el año (M × 1)', total: 24.95, puntos: 24 },
+]
 
-function Team() {
-  return (
-    <div>
-      <p className="font-display text-2xl">Equipo y clientes</p>
-      <p className="mt-1 text-sm text-muted">Los encargados cambian roles y dan de baja usuarios.</p>
-      <ul className="mt-5 divide-y divide-line border-y border-line">
-        {USERS.map((u) => (
-          <li key={u.id} className="flex items-center gap-4 py-3">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-paper-2 text-xs">
-              {u.name.split(' ').map((w) => w[0]).join('')}
-            </span>
-            <span className="min-w-0 flex-1 text-sm">
-              {u.name}
-              <span className="block truncate text-xs text-muted">{u.email}</span>
-            </span>
-            <span className="text-xs uppercase tracking-wider">{u.role}</span>
-            <Trash2 className="h-4 w-4 text-muted" />
-          </li>
-        ))}
-      </ul>
-    </div>
-  )
-}
+const iniciales = (nombre: string) =>
+  nombre
+    .split(' ')
+    .map((w) => w[0])
+    .join('')
 
 export function Admin() {
   return (
     <div className="px-4 py-16 sm:px-8">
       <SectionHeading level={7} title="Gestión de la tienda" />
       <div className="grid gap-12 lg:grid-cols-2">
-        <Supplies />
-        <Team />
+        <div>
+          <p className="font-display text-2xl">Últimas compras</p>
+          <p className="mt-1 text-sm text-muted">Cada compra descuenta stock y suma puntos al cliente.</p>
+          <ul className="mt-5 divide-y divide-line border-y border-line">
+            {COMPRAS.map((c) => (
+              <li key={c.cliente} className="flex items-center gap-4 py-3 text-sm">
+                <span className="min-w-0 flex-1">
+                  {c.cliente}
+                  <span className="block truncate text-xs text-muted">{c.resumen}</span>
+                </span>
+                <span className="text-xs text-ok">+{c.puntos} pts</span>
+                <span className="w-20 text-right">{formatPrice(c.total)}</span>
+              </li>
+            ))}
+          </ul>
+
+          <p className="mt-10 font-display text-2xl">Proveedores</p>
+          <ul className="mt-5 divide-y divide-line border-y border-line">
+            {MOCK_PROVEEDORES.map((p) => (
+              <li key={p._id} className="flex items-center justify-between py-3 text-sm">
+                <span>
+                  {p.nombreComercial}
+                  <span className="block text-xs text-muted">{p.condicionesPago}</span>
+                </span>
+                <span className="text-xs text-muted">{p.descuentosVolumen}% por volumen</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div>
+          <p className="font-display text-2xl">Clientes y puntos</p>
+          <p className="mt-1 text-sm text-muted">Solo un administrador gestiona clientes y empleados.</p>
+          <ul className="mt-5 divide-y divide-line border-y border-line">
+            {CLIENTES.map((c) => (
+              <li key={c.email} className="flex items-center gap-4 py-3">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-paper-2 text-xs">{iniciales(c.nombre)}</span>
+                <span className="min-w-0 flex-1 text-sm">
+                  {c.nombre}
+                  <span className="block truncate text-xs text-muted">{c.email}</span>
+                </span>
+                <span className="text-sm">{c.puntos} pts</span>
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
     </div>
   )

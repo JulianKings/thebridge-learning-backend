@@ -16,15 +16,15 @@ import { Toaster } from './ui'
 
 // Pages that need a session wait for it to be restored, then fall back to login.
 function RequireUser({ next, staff, children }: { next: string; staff?: boolean; children: ReactNode }) {
-  const { user, ready, isStaff } = useAuth()
+  const { usuario, rol, ready, isStaff } = useAuth()
   if (!ready) return <div className="grid min-h-[60vh] place-items-center text-sm text-muted">Cargando…</div>
-  if (!user) return <Login next={next} />
+  if (!usuario) return <Login next={next} />
   if (staff && !isStaff)
     return (
       <div className="py-32 text-center">
         <p className="font-mono text-xs text-bad">HTTP 403</p>
         <p className="mt-2 font-display text-4xl">Zona solo para el equipo</p>
-        <p className="mt-2 text-sm text-muted">Tu cuenta de {user.role} no tiene acceso a la gestión.</p>
+        <p className="mt-2 text-sm text-muted">Tu cuenta de {rol} no tiene acceso a la gestión.</p>
       </div>
     )
   return <>{children}</>
@@ -93,9 +93,9 @@ function ShopFooter() {
           <p className="mt-3 text-xs leading-relaxed text-muted">Ropa esencial hecha para durar. Proyecto de aprendizaje de The Bridge.</p>
         </div>
         {[
-          ['Tienda', 'Mujer', 'Hombre', 'Unisex'],
+          ['Tienda', 'Parte de arriba', 'Parte de abajo', 'Calzado'],
           ['Ayuda', 'Envíos', 'Devoluciones', 'Contacto'],
-          ['Backend', 'Express', 'MongoDB', 'JWT · Swagger'],
+          ['Backend', 'Express · MongoDB', 'JWT · Swagger', 'Compras y puntos'],
         ].map(([title, ...items]) => (
           <div key={title}>
             <p className="eyebrow">{title}</p>

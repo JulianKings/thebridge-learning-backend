@@ -1,21 +1,22 @@
 import { Menu, Search, X } from 'lucide-react'
 import { useState } from 'react'
 import type { FormEvent } from 'react'
+import { GRUPO_SLUG } from '../ropa/types'
 import { useAuth } from './AuthContext'
 import { useCart } from './CartContext'
 import { navigate, shopHref, useShopRoute } from './router'
 
 const CATS = [
-  { slug: 'mujer', label: 'Mujer' },
-  { slug: 'hombre', label: 'Hombre' },
-  { slug: 'unisex', label: 'Unisex' },
+  { slug: GRUPO_SLUG['Parte de arriba'], label: 'Arriba' },
+  { slug: GRUPO_SLUG['Parte de abajo'], label: 'Abajo' },
+  { slug: GRUPO_SLUG.Calzado, label: 'Calzado' },
   { slug: 'todo', label: 'Ver todo' },
 ]
 
 const link = 'text-[11px] uppercase tracking-[0.18em] hover:opacity-60'
 
 export function ShopHeader() {
-  const { user, isStaff } = useAuth()
+  const { usuario, isStaff } = useAuth()
   const { count, setOpen } = useCart()
   const route = useShopRoute()
   const [search, setSearch] = useState(false)
@@ -67,8 +68,8 @@ export function ShopHeader() {
               Gestión
             </a>
           )}
-          <a href={shopHref(user ? 'cuenta' : 'login')} className={`${link} hidden sm:inline`}>
-            {user ? user.name.split(' ')[0] : 'Iniciar sesión'}
+          <a href={shopHref(usuario ? 'cuenta' : 'login')} className={`${link} hidden sm:inline`}>
+            {usuario ? usuario.nombre.split(' ')[0] : 'Iniciar sesión'}
           </a>
           <button onClick={() => setOpen(true)} className={link}>
             Cesta ({count})
@@ -83,8 +84,8 @@ export function ShopHeader() {
               {c.label}
             </a>
           ))}
-          <a href={shopHref(user ? 'cuenta' : 'login')} className={link}>
-            {user ? 'Mi cuenta' : 'Iniciar sesión'}
+          <a href={shopHref(usuario ? 'cuenta' : 'login')} className={link}>
+            {usuario ? 'Mi cuenta' : 'Iniciar sesión'}
           </a>
           {isStaff && (
             <a href={shopHref('gestion')} className={link}>
