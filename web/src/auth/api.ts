@@ -15,6 +15,11 @@ export type Usuario = {
   afiliado?: string
   cargo?: 'reponedor' | 'dependiente' | 'encargado'
   horario?: string
+  salario?: number
+  vacaciones?: boolean
+  altaSS?: string
+  bajaSS?: string
+  createdAt?: string
 }
 
 export type RegistroInput = Pick<Usuario, 'nombre' | 'email' | 'cp'> & { password: string; fechaNacimiento: string; genero: Genero }
@@ -24,6 +29,7 @@ export const esPersonal = (rol?: string) => rol === 'empleado' || rol === 'admin
 
 // <input type="date"> gives YYYY-MM-DD; the API stores DD/MM/YYYY.
 export const aFechaApi = (iso: string) => iso.split('-').reverse().join('/')
+export const deFechaApi = (fecha = '') => (/^\d{2}\/\d{2}\/\d{4}$/.test(fecha) ? fecha.split('/').reverse().join('-') : '')
 
 export type Claims = { rol?: string; cargo?: string; exp?: number; iat?: number; [k: string]: unknown }
 

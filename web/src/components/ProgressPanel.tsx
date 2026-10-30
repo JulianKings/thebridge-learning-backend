@@ -60,7 +60,7 @@ export function ProgressPanel({ onNavigate }: { onNavigate?: () => void }) {
           return (
             <li
               key={l.id}
-              className={`overflow-hidden rounded-2xl transition-colors ${
+              className={`overflow-hidden rounded-2xl transition-all duration-300 hover:translate-x-1 hover:ring-1 hover:ring-fx-violet/40 ${
                 isCurrent ? 'bg-fx-card-2 ring-1 ring-fx-pink/50' : done ? 'bg-fx-card' : 'bg-fx-card/50'
               }`}
             >

@@ -2,6 +2,7 @@ import { useId, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import { useQuery } from '../api/hooks'
 import { aFechaApi, authApi, useSession } from '../auth/api'
+import { DemoAccounts } from '../auth/DemoAccounts'
 import type { Genero, RegistroInput, Usuario } from '../auth/api'
 import { useProgress } from '../progress/ProgressContext'
 import { ErrorBox, toast, toastError } from '../shop/ui'
@@ -63,7 +64,7 @@ export function LoginForm() {
       <button disabled={busy} className={buttonCls}>
         Entrar
       </button>
-      <p className="font-mono text-[11px] text-muted">POST /auth/login · clientes y empleados</p>
+      <p className="font-mono text-[11px] text-muted">POST /auth/login · clientes, empleados y administradores</p>
     </form>
   )
 }
@@ -145,8 +146,10 @@ function Perfil({ usuario, rol, onLogout }: { usuario: Usuario; rol?: string; on
 function AuthForms() {
   const [tab, setTab] = useState<'login' | 'registro'>('login')
   return (
-    <div className="max-w-xl">
-      <div className="mb-8 flex gap-6">
+    <div className="max-w-3xl">
+      <p className="eyebrow mb-4">Cuentas de demostración</p>
+      <DemoAccounts />
+      <div className="mb-8 mt-12 flex gap-6">
         {(['login', 'registro'] as const).map((t) => (
           <button
             key={t}
@@ -157,7 +160,7 @@ function AuthForms() {
           </button>
         ))}
       </div>
-      {tab === 'login' ? <LoginForm /> : <RegistroForm />}
+      <div className="max-w-xl">{tab === 'login' ? <LoginForm /> : <RegistroForm />}</div>
     </div>
   )
 }

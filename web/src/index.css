@@ -12,6 +12,8 @@
   --bad: #a3392b;
   --bad-soft: #f5e2df;
   --panel: #ffffff;
+  --pop: #ff4f1f;
+  --pop-soft: #ffe6dc;
 }
 
 /* Editorial theme, the level 4 reward. */
@@ -27,6 +29,8 @@
   --bad: #e38b7d;
   --bad-soft: #2e1c19;
   --panel: #161513;
+  --pop: #ff6b3d;
+  --pop-soft: #3a1d14;
 }
 
 @theme inline {
@@ -41,6 +45,8 @@
   --color-bad: var(--bad);
   --color-bad-soft: var(--bad-soft);
   --color-panel: var(--panel);
+  --color-pop: var(--pop);
+  --color-pop-soft: var(--pop-soft);
   --font-display: 'Bodoni Moda', 'Didot', serif;
   --font-sans: 'Inter', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
@@ -105,6 +111,12 @@
 }
 
 .fx-blob { animation: fx-float 22s ease-in-out infinite; }
+
+@keyframes fx-twinkle {
+  0%, 100% { opacity: 0.1; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.8); }
+}
+.fx-twinkle { animation: fx-twinkle 4s ease-in-out infinite; }
 .fx-pulse { animation: fx-pulse-ring 1.8s ease-out infinite; }
 
 html {
@@ -135,11 +147,108 @@ body {
   animation: marquee 28s linear infinite;
 }
 
+/* Underline that grows from the left on hover. */
+.link-grow {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-size: 0% 1px;
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  transition: background-size 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.link-grow:hover,
+.link-grow[aria-current='page'] {
+  background-size: 100% 1px;
+}
+
+/* A light sweep across the element on hover. */
+.shine {
+  position: relative;
+  overflow: hidden;
+}
+.shine::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 30%, #ffffff55 50%, transparent 70%);
+  transform: translateX(-120%);
+  pointer-events: none;
+}
+.shine:hover::after {
+  transform: translateX(120%);
+  transition: transform 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.text-outline {
+  color: transparent;
+  -webkit-text-stroke: 1px var(--ink);
+}
+
+.grain::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0.18;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+@keyframes shimmer {
+  to { background-position: -200% 0; }
+}
+.shimmer {
+  background: linear-gradient(90deg, var(--paper-2) 25%, var(--line) 50%, var(--paper-2) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+
+@keyframes spin-slow {
+  to { transform: rotate(360deg); }
+}
+.spin-slow {
+  animation: spin-slow 18s linear infinite;
+}
+
+/* Two thumbs on one track: only the thumbs take pointer events. */
+.range-dual {
+  pointer-events: none;
+  appearance: none;
+  background: transparent;
+}
+.range-dual::-webkit-slider-thumb {
+  pointer-events: auto;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 9999px;
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  cursor: grab;
+  transition: transform 0.15s ease;
+}
+.range-dual::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+.range-dual::-moz-range-thumb {
+  pointer-events: auto;
+  width: 14px;
+  height: 14px;
+  border-radius: 9999px;
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  cursor: grab;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .marquee,
   .fx-gradient-text,
   .fx-blob,
-  .fx-pulse { animation: none; }
+  .fx-pulse,
+  .fx-twinkle,
+  .shimmer,
+  .spin-slow { animation: none; }
+  .shine::after { display: none; }
   html { scroll-behavior: auto; }
 }
 

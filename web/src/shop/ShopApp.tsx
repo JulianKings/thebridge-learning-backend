@@ -1,3 +1,4 @@
+import { MotionConfig, motion } from 'framer-motion'
 import { useEffect } from 'react'
 import type { ReactNode } from 'react'
 import { AuthProvider, useAuth } from './AuthContext'
@@ -8,7 +9,8 @@ import { Checkout, OrderDone } from './pages/Checkout'
 import { Home } from './pages/Home'
 import { Listing } from './pages/Listing'
 import { Login } from './pages/Login'
-import { Manage } from './pages/Manage'
+import { Gestion } from './gestion/Gestion'
+import { ScrollProgress } from './motion'
 import { ProductPage } from './pages/ProductPage'
 import { shopHref, useShopRoute } from './router'
 import { ShopHeader } from './ShopHeader'
@@ -69,7 +71,7 @@ function Routes() {
     case 'gestion':
       return (
         <RequireUser next="gestion" staff>
-          <Manage tab={a} id={b} />
+          <Gestion section={a} id={b} />
         </RequireUser>
       )
     default:
@@ -86,11 +88,11 @@ function Routes() {
 
 function ShopFooter() {
   return (
-    <footer className="mt-20 border-t border-line px-4 py-14 sm:px-8">
+    <footer className="mt-20 overflow-hidden border-t border-line bg-ink px-4 pt-14 text-paper sm:px-8">
       <div className="mx-auto grid max-w-[1500px] gap-10 text-sm sm:grid-cols-4">
         <div>
           <p className="font-display text-2xl tracking-[0.3em]">THEBRIDGE</p>
-          <p className="mt-3 text-xs leading-relaxed text-muted">Ropa esencial hecha para durar. Proyecto de aprendizaje de The Bridge.</p>
+          <p className="mt-3 text-xs leading-relaxed text-paper/60">Ropa esencial hecha para durar. Proyecto de aprendizaje de The Bridge.</p>
         </div>
         {[
           ['Tienda', 'Parte de arriba', 'Parte de abajo', 'Calzado'],
@@ -98,8 +100,8 @@ function ShopFooter() {
           ['Backend', 'Express · MongoDB', 'JWT · Swagger', 'Compras y puntos'],
         ].map(([title, ...items]) => (
           <div key={title}>
-            <p className="eyebrow">{title}</p>
-            <ul className="mt-3 space-y-1.5 text-muted">
+            <p className="text-[0.68rem] uppercase tracking-[0.22em] text-pop">{title}</p>
+            <ul className="mt-3 space-y-1.5 text-paper/60">
               {items.map((i) => (
                 <li key={i}>{i}</li>
               ))}
@@ -107,22 +109,35 @@ function ShopFooter() {
           </div>
         ))}
       </div>
+      <p className="mt-14 select-none text-center font-display text-[22vw] leading-[0.75] tracking-tight text-paper/10" aria-hidden="true">
+        THEBRIDGE
+      </p>
     </footer>
   )
 }
 
 export function ShopApp() {
+  const [page, a] = useShopRoute()
   return (
-    <AuthProvider>
-      <CartProvider>
-        <ShopHeader />
-        <main className="min-h-[70vh]">
-          <Routes />
-        </main>
-        <ShopFooter />
-        <CartDrawer />
-        <Toaster />
-      </CartProvider>
-    </AuthProvider>
+    <MotionConfig reducedMotion="user">
+      <AuthProvider>
+        <CartProvider>
+          <ScrollProgress />
+          <ShopHeader />
+          <motion.main
+            key={`${page}/${page === 'gestion' ? '' : (a ?? '')}`}
+            className="min-h-[70vh]"
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <Routes />
+          </motion.main>
+          {page !== 'gestion' && <ShopFooter />}
+          <CartDrawer />
+          <Toaster />
+        </CartProvider>
+      </AuthProvider>
+    </MotionConfig>
   )
 }

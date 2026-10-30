@@ -47,9 +47,10 @@ export type Producto = {
   foto?: string
   // An id from GET /ropa, the full supplier when the API populates it.
   proveedor: string | Proveedor
+  createdAt?: string
 }
 
-export type ProductoInput = Omit<Producto, '_id' | 'proveedor'> & { proveedor: string }
+export type ProductoInput = Omit<Producto, '_id' | 'proveedor' | 'createdAt'> & { proveedor: string }
 
 export const titulo = (p: Pick<Producto, 'tipo' | 'temporada'>) => {
   const nombre = nombreTipo(p.tipo)
@@ -87,7 +88,7 @@ export const GRUPO_SLUG: Record<Grupo, string> = {
 export const grupoPorSlug = (slug?: string) => GRUPOS.find((g) => GRUPO_SLUG[g] === slug)
 
 // `proveedor` comes back as an ObjectId unless the API populates it, so fall back to the list.
-export const nombreProveedor = (p: Pick<Producto, 'proveedor'>, proveedores: Proveedor[] = []) =>
+export const nombreProveedor = (p: Pick<Producto, 'proveedor'>, proveedores: Pick<Proveedor, '_id' | 'nombreComercial'>[] = []) =>
   typeof p.proveedor === 'object' && p.proveedor
     ? p.proveedor.nombreComercial
     : (proveedores.find((pr) => pr._id === p.proveedor)?.nombreComercial ?? null)

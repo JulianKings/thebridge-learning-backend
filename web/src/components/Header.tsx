@@ -10,8 +10,8 @@ export function Header({ onOpenProgress }: { onOpenProgress: () => void }) {
   return (
     <header className="sticky top-0 z-30 border-b border-fx-line bg-fx-bg/70 font-fx text-fx-text backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-[1400px] items-center gap-4 px-4 sm:px-6">
-        <a href="#inicio" className="flex items-center gap-3">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-fx-card-2 text-lg font-bold ring-1 ring-white/10">
+        <a href="#inicio" className="group flex items-center gap-3">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-fx-card-2 text-lg font-bold ring-1 ring-white/10 transition-all duration-500 group-hover:rotate-[360deg] group-hover:ring-fx-pink/60 group-hover:shadow-[0_0_20px_-2px_#ec4899aa]">
             <span className="fx-gradient-text">A</span>
           </span>
           <span className="whitespace-nowrap text-xl font-bold tracking-wide">API TheBridge</span>

@@ -1,6 +1,8 @@
 import { useQuery } from '../../api/hooks'
 import { authApi } from '../../auth/api'
 import { comprasApi } from '../../compras/api'
+import { EstadoTracker } from '../../compras/Estado'
+import { CountUp, Reveal } from '../motion'
 import { formatPrice } from '../../data/mock'
 import { ropaApi } from '../../ropa/api'
 import { useAuth } from '../AuthContext'
@@ -30,7 +32,7 @@ function MisCompras() {
   return (
     <ul className="mt-6 divide-y divide-line border-y border-line">
       {data.map((c) => (
-        <li key={c._id} className="grid gap-2 py-5 sm:grid-cols-[1fr_auto_auto] sm:items-center sm:gap-10">
+        <li key={c._id} className="grid gap-3 py-5 sm:grid-cols-[1fr_auto_auto] sm:items-center sm:gap-10">
           <div>
             <p className="text-sm">
               Compra <span className="font-mono text-xs">{c._id.slice(-6)}</span> <span className="text-muted">· {fecha(c.createdAt)}</span>
@@ -43,8 +45,11 @@ function MisCompras() {
                 </span>
               ))}
             </p>
+            <div className="mt-3">
+              <EstadoTracker estado={c.estado} />
+            </div>
           </div>
-          <span className="text-xs text-muted">{c.puntos ? `+${c.puntos} puntos` : ''}</span>
+          <span className={`text-xs ${c.estado === 'cancelado' ? 'text-muted line-through' : 'text-pop'}`}>{c.puntos ? `+${c.puntos} puntos` : ''}</span>
           <span className="text-sm">{formatPrice(c.total)}</span>
         </li>
       ))}
@@ -87,10 +92,13 @@ export function Account() {
 
       {rol === 'cliente' && (
         <>
-          <div className="mt-10 flex items-baseline gap-3">
-            <span className="font-display text-6xl">{usuario.puntos ?? 0}</span>
-            <span className="eyebrow">puntos acumulados</span>
-          </div>
+          <Reveal className="mt-10 flex flex-wrap items-center justify-between gap-6 bg-ink px-8 py-8 text-paper">
+            <div className="flex items-baseline gap-3">
+              <CountUp value={usuario.puntos ?? 0} className="font-display text-7xl text-pop" />
+              <span className="text-[0.68rem] uppercase tracking-[0.22em] text-paper/70">puntos acumulados</span>
+            </div>
+            <p className="max-w-xs text-sm text-paper/70">Sumas 1 punto por cada euro. Si se cancela un pedido, sus puntos se descuentan.</p>
+          </Reveal>
           <h2 className="mt-12 font-display text-3xl">Mis compras</h2>
           <MisCompras />
         </>

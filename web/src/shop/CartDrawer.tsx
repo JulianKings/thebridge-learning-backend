@@ -61,7 +61,7 @@ export function CartDrawer() {
             ) : (
               <ul className="flex-1 divide-y divide-line overflow-y-auto px-6">
                 {lines.map((l) => (
-                  <li key={`${l.productId}-${l.size}`} className="flex gap-4 py-5">
+                  <motion.li layout initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} key={`${l.productId}-${l.size}`} className="flex gap-4 py-5">
                     <ProductoImage tipo={l.producto.tipo} foto={l.producto.foto} seed={l.producto._id} className="h-28 w-21 shrink-0" />
                     <div className="flex flex-1 flex-col">
                       <p className="text-[13px] uppercase tracking-wide">{titulo(l.producto)}</p>
@@ -84,7 +84,7 @@ export function CartDrawer() {
                         <span className="text-sm">{formatPrice(l.precio * l.qty)}</span>
                       </div>
                     </div>
-                  </li>
+                  </motion.li>
                 ))}
               </ul>
             )}
@@ -95,6 +95,12 @@ export function CartDrawer() {
                   <span className="uppercase tracking-wide">Total</span>
                   <span>{formatPrice(total)}</span>
                 </div>
+                <p className="mt-2 flex items-center justify-between text-xs text-muted">
+                  Con este pedido ganas
+                  <motion.span key={Math.floor(total)} initial={{ scale: 1.4 }} animate={{ scale: 1 }} className="font-medium text-pop">
+                    +{Math.floor(total)} puntos
+                  </motion.span>
+                </p>
                 <button onClick={checkout} className={`${btnPrimary} mt-5 w-full`}>
                   Tramitar pedido
                 </button>

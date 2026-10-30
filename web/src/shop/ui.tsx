@@ -1,9 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useSyncExternalStore } from 'react'
 import { ApiError } from '../api/types'
-import { ProductoTile } from '../ropa/ProductoTile'
-import type { Producto, Proveedor } from '../ropa/types'
-import { shopHref } from './router'
 
 type Toast = { id: number; text: string; kind: 'ok' | 'error' }
 let toasts: Toast[] = []
@@ -32,12 +29,13 @@ export function Toaster() {
     () => toasts,
   )
   return (
-    <div className="pointer-events-none fixed bottom-4 right-4 z-[60] flex flex-col items-end gap-2">
+    <div className="pointer-events-none fixed right-4 top-20 z-[60] flex flex-col items-end gap-2">
       <AnimatePresence>
         {list.map((t) => (
           <motion.div
             key={t.id}
-            initial={{ opacity: 0, y: 12 }}
+            layout
+            initial={{ opacity: 0, y: -12 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, x: 20 }}
             className={`max-w-sm px-4 py-3 text-sm shadow-lg ${t.kind === 'error' ? 'bg-bad text-white' : 'bg-ink text-paper'}`}
@@ -60,26 +58,21 @@ export function ErrorBox({ error, className = '' }: { error: ApiError; className
   )
 }
 
-export function GridSkeleton({ n = 8 }: { n?: number }) {
+export function GridSkeleton({ n = 8, className = 'grid-cols-2 md:grid-cols-3 xl:grid-cols-4' }: { n?: number; className?: string }) {
   return (
-    <div className="grid grid-cols-2 gap-x-4 gap-y-10 md:grid-cols-3 xl:grid-cols-4">
+    <div className={`grid gap-x-4 gap-y-10 ${className}`}>
       {Array.from({ length: n }, (_, i) => (
         <div key={i}>
-          <div className="aspect-[3/4] animate-pulse bg-paper-2" />
-          <div className="mt-3 h-3 w-2/3 animate-pulse bg-paper-2" />
+          <div className="shimmer aspect-[3/4]" />
+          <div className="shimmer mt-3 h-3 w-2/3" />
+          <div className="shimmer mt-2 h-3 w-1/3" />
         </div>
       ))}
     </div>
   )
 }
 
-export function ProductCard({ p, proveedores }: { p: Producto; proveedores?: Proveedor[] }) {
-  return (
-    <a href={shopHref(`p/${p._id}`)} className="block">
-      <ProductoTile p={p} proveedores={proveedores} />
-    </a>
-  )
-}
+export { ProductCard } from './ProductCard'
 
 export const btnPrimary =
   'inline-flex items-center justify-center gap-2 bg-ink px-6 py-3.5 text-[11px] uppercase tracking-[0.2em] text-paper transition-opacity hover:opacity-85 disabled:opacity-40'

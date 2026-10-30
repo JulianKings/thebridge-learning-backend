@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion'
 import { ArrowRight, Gamepad2, Lock, Trophy } from 'lucide-react'
 import { API_URL } from '../config'
-import { LevelBadge } from '../fx/fx'
+import { LevelBadge, Tilt } from '../fx/fx'
 import { LEVELS } from '../levels/levels'
 import { useProgress } from '../progress/ProgressContext'
 
@@ -26,7 +26,14 @@ export function Intro() {
           <h1 className="mt-5 text-5xl font-bold leading-[1.02] tracking-tight sm:text-6xl 2xl:text-7xl">
             Construye la API.
             <br />
-            <span className="fx-gradient-text">Desbloquea la tienda.</span>
+            <motion.span
+              className="fx-gradient-text inline-block"
+              initial={{ opacity: 0, y: 20, filter: 'blur(8px)' }}
+              animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+              transition={{ delay: 0.25, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+            >
+              Desbloquea la tienda.
+            </motion.span>
           </h1>
           <p className="mt-5 max-w-xl text-base leading-relaxed text-fx-muted">
             Esta web se alimenta de vuestra API. Cada nivel que superéis enciende una parte de la tienda con vuestros
@@ -34,7 +41,7 @@ export function Intro() {
           </p>
           <div className="mt-7 grid max-w-xl grid-cols-3 gap-3">
             {stats.map((s) => (
-              <div key={s.label} className="rounded-2xl border border-fx-line bg-fx-card/70 px-4 py-3 backdrop-blur">
+              <div key={s.label} className="rounded-2xl border border-fx-line bg-fx-card/70 px-4 py-3 backdrop-blur transition-colors hover:border-fx-violet/60">
                 <p className="text-[10px] font-semibold uppercase tracking-widest text-fx-muted">{s.label}</p>
                 <p className="mt-1 truncate text-lg font-bold">{s.value}</p>
               </div>
@@ -80,29 +87,31 @@ export function Intro() {
           const state = done ? 'done' : isNext ? 'next' : 'locked'
           return (
             <motion.li key={l.id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 * i }}>
-              <a
-                href={`#${l.key}`}
-                className={`group relative flex h-full flex-col rounded-2xl p-px transition-transform hover:-translate-y-1 ${
-                  isNext ? 'fx-gradient-bg fx-glow' : done ? 'bg-linear-to-br from-fx-violet/60 to-fx-pink/40' : 'bg-fx-line'
-                }`}
-              >
-                <span className={`flex h-full flex-col rounded-[15px] p-5 ${done || isNext ? 'bg-fx-card' : 'bg-fx-card/70'}`}>
-                  <span className="flex items-center justify-between">
-                    <LevelBadge level={l.id} state={state} />
-                    <span className={`text-4xl font-bold ${done ? 'fx-gradient-text' : 'text-white/10'}`}>{String(l.id).padStart(2, '0')}</span>
+              <Tilt className="h-full">
+                <a
+                  href={`#${l.key}`}
+                  className={`group relative flex h-full flex-col rounded-2xl p-px transition-transform hover:-translate-y-1 ${
+                    isNext ? 'fx-gradient-bg fx-glow' : done ? 'bg-linear-to-br from-fx-violet/60 to-fx-pink/40' : 'bg-fx-line'
+                  }`}
+                >
+                  <span className={`flex h-full flex-col rounded-[15px] p-5 ${done || isNext ? 'bg-fx-card' : 'bg-fx-card/70'}`}>
+                    <span className="flex items-center justify-between">
+                      <LevelBadge level={l.id} state={state} />
+                      <span className={`text-4xl font-bold ${done ? 'fx-gradient-text' : 'text-white/10'}`}>{String(l.id).padStart(2, '0')}</span>
+                    </span>
+                    <span className={`mt-4 text-lg font-bold ${state === 'locked' ? 'text-fx-muted' : ''}`}>{l.title}</span>
+                    <span className="mt-1 flex-1 text-sm text-fx-muted">{l.tagline}</span>
+                    <span
+                      className={`mt-5 inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider ${
+                        done ? 'text-fx-green' : isNext ? 'text-fx-pink' : 'text-fx-muted'
+                      }`}
+                    >
+                      {done ? '✓ Superado' : isNext ? 'Tu siguiente reto' : 'Vista previa'}
+                      <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
+                    </span>
                   </span>
-                  <span className={`mt-4 text-lg font-bold ${state === 'locked' ? 'text-fx-muted' : ''}`}>{l.title}</span>
-                  <span className="mt-1 flex-1 text-sm text-fx-muted">{l.tagline}</span>
-                  <span
-                    className={`mt-5 inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider ${
-                      done ? 'text-fx-green' : isNext ? 'text-fx-pink' : 'text-fx-muted'
-                    }`}
-                  >
-                    {done ? '✓ Superado' : isNext ? 'Tu siguiente reto' : 'Vista previa'}
-                    <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
-                  </span>
-                </span>
-              </a>
+                </a>
+              </Tilt>
             </motion.li>
           )
         })}

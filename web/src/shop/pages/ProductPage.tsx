@@ -6,6 +6,7 @@ import { CHECK_EVENT } from '../../levels/levels'
 import { ropaApi } from '../../ropa/api'
 import { ProductoImage } from '../../ropa/ProductoImage'
 import { GRUPO_SLUG, grupoDe, nombreProveedor, precioFinal, stockTotal, titulo } from '../../ropa/types'
+import { Reveal } from '../motion'
 import type { TallaTipo } from '../../ropa/types'
 import { useAuth } from '../AuthContext'
 import { useCart } from '../CartContext'
@@ -14,7 +15,8 @@ import { ErrorBox, ProductCard, btnPrimary } from '../ui'
 
 export function ProductPage({ id }: { id: string }) {
   const { data: p, loading, error } = useQuery(() => ropaApi.get(id), [id])
-  const { data: all } = useQuery(() => ropaApi.list(), [])
+  const grupoSlug = p ? GRUPO_SLUG[grupoDe(p.tipo)] : undefined
+  const { data: relacionadas } = useQuery(() => (grupoSlug ? ropaApi.page({ grupo: grupoSlug, disponible: true, limit: 5 }) : Promise.resolve(null)), [grupoSlug])
   const { data: proveedores } = useQuery(() => ropaApi.proveedores(), [])
   const { add } = useCart()
   const { isStaff } = useAuth()
@@ -26,7 +28,7 @@ export function ProductPage({ id }: { id: string }) {
   if (!p) return null
 
   const grupo = grupoDe(p.tipo)
-  const related = all?.filter((x) => grupoDe(x.tipo) === grupo && x._id !== p._id && x.evento !== CHECK_EVENT).slice(0, 4) ?? []
+  const related = relacionadas?.items.filter((x) => x._id !== p._id && x.evento !== CHECK_EVENT).slice(0, 4) ?? []
   const agotado = !p.disponible || stockTotal(p) === 0
   const stockElegida = p.talla.find((t) => t.talla_tipo === talla)?.talla_stock
   const proveedor = nombreProveedor(p, proveedores)
@@ -39,7 +41,14 @@ export function ProductPage({ id }: { id: string }) {
   return (
     <>
       <section className="mx-auto grid max-w-[1500px] gap-10 px-4 py-8 sm:px-8 lg:grid-cols-[1.4fr_1fr]">
-        <ProductoImage tipo={p.tipo} foto={p.foto} seed={p._id} className="aspect-[3/4] w-full" />
+        <div className="group overflow-hidden">
+          <ProductoImage
+            tipo={p.tipo}
+            foto={p.foto}
+            seed={p._id}
+            className="aspect-[3/4] w-full transition-transform duration-[1.5s] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-110"
+          />
+        </div>
 
         <div className="lg:sticky lg:top-24 lg:self-start">
           <a href={shopHref(`c/${GRUPO_SLUG[grupo]}`)} className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-muted hover:text-ink">
@@ -52,7 +61,7 @@ export function ProductPage({ id }: { id: string }) {
             {p.descuento > 0 && (
               <>
                 <span className="ml-3 text-sm text-muted line-through">{formatPrice(p.precio)}</span>
-                <span className="ml-2 text-sm text-bad">-{p.descuento}%</span>
+                <span className="ml-2 bg-pop px-1.5 py-0.5 text-xs text-white">-{p.descuento}%</span>
               </>
             )}
           </p>
@@ -100,10 +109,12 @@ export function ProductPage({ id }: { id: string }) {
 
       {related.length > 0 && (
         <section className="mx-auto max-w-[1500px] px-4 py-16 sm:px-8">
-          <h2 className="mb-8 font-display text-3xl">También te puede gustar</h2>
+          <Reveal>
+            <h2 className="mb-8 font-display text-3xl">También te puede gustar</h2>
+          </Reveal>
           <div className="grid grid-cols-2 gap-x-4 gap-y-10 md:grid-cols-4">
-            {related.map((r) => (
-              <ProductCard key={r._id} p={r} proveedores={proveedores} />
+            {related.map((r, i) => (
+              <ProductCard key={r._id} p={r} proveedores={proveedores} index={i} />
             ))}
           </div>
         </section>
