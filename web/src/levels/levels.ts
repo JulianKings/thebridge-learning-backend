@@ -73,7 +73,7 @@ const field = (body: unknown, key: string) => (body && typeof body === 'object' 
 
 function expectStatus(res: ApiResponse, expected: number[], what: string) {
   if (expected.includes(res.status)) return
-  const message = field(res.body, 'message')
+  const message = field(res.body, 'message') ?? field(res.body, 'error')
   throw new CheckFailed(`${what}: esperábamos ${expected.join(' o ')} y ha devuelto ${res.status}${message ? ` (${message})` : ''}`)
 }
 
@@ -174,7 +174,7 @@ const bearer = (token: string) => ({ Authorization: `Bearer ${token}` })
 type AuthState = { cliente?: TestCliente; token?: string }
 const auth = (ctx: CheckContext) => ctx.state as AuthState
 
-const STAFF = ['trabajador', 'administrador']
+const STAFF = ['empleado', 'administrador']
 const staffToken = (ctx: CheckContext) => (ctx.session && STAFF.includes(ctx.session.rol ?? '') ? ctx.session.token : null)
 const asStaff = (ctx: CheckContext) => {
   const token = staffToken(ctx)
@@ -460,7 +460,7 @@ export const LEVELS: LevelDef[] = [
     checks: [
       {
         id: 'registro',
-        label: 'POST /auth/registro crea un cliente',
+        label: 'POST /auth/registro crea un cliente y devuelve su token',
         run: async (ctx) => {
           const stored = storedCliente()
           const cliente = stored ?? newCliente()
@@ -469,8 +469,14 @@ export const LEVELS: LevelDef[] = [
           // Registered on a previous run: the API now rejects the repeated email, as it should.
           if (stored && [400, 409].includes(res.status)) return
           expectStatus(res, [201], 'POST /auth/registro')
-          if (includesPassword(res.body)) throw new CheckFailed('La respuesta incluye la contraseña: no la devuelvas nunca')
+          // Stored before the shape checks: the cliente exists now, and re-registering it would only hit the duplicate path.
           storeCliente(cliente)
+          if (field(field(res.body, 'cliente'), 'email') !== cliente.email) throw new CheckFailed('La respuesta debería incluir "cliente" con el email registrado')
+          const token = field(res.body, 'token')
+          const claims = typeof token === 'string' ? decodeToken(token) : null
+          if (typeof token !== 'string' || !claims) throw new CheckFailed('La respuesta debería incluir "token" con un JWT válido')
+          if (claims.rol !== 'cliente') throw new CheckFailed(`El token debería llevar rol: "cliente" y lleva ${JSON.stringify(claims.rol ?? null)}`)
+          if (includesPassword(res.body)) throw new CheckFailed('La respuesta incluye la contraseña: no la devuelvas nunca')
         },
       },
       {

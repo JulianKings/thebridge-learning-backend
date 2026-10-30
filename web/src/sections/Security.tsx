@@ -22,7 +22,7 @@ const PERMISSIONS: { action: string; roles: [boolean, boolean, boolean] }[] = [
 ]
 
 const columnOf = (claims: Claims | null) =>
-  claims?.rol === 'cliente' ? 0 : claims?.rol === 'trabajador' ? 1 : claims?.rol === 'administrador' ? 2 : null
+  claims?.rol === 'cliente' ? 0 : claims?.rol === 'empleado' ? 1 : claims?.rol === 'administrador' ? 2 : null
 
 function useSecondsLeft(exp: number | undefined) {
   const [now, setNow] = useState(() => Date.now())
