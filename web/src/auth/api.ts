@@ -19,21 +19,22 @@ export type Usuario = {
 
 export type RegistroInput = Pick<Usuario, 'nombre' | 'email' | 'cp'> & { password: string; fechaNacimiento: string; genero: Genero }
 
-export type Rol = 'cliente' | 'trabajador' | 'administrador'
-export const esPersonal = (rol?: string) => rol === 'trabajador' || rol === 'administrador'
+export type Rol = 'cliente' | 'empleado' | 'trabajador' | 'administrador'
+export const esPersonal = (rol?: string) => rol === 'empleado' || rol === 'trabajador' || rol === 'administrador'
 
 // <input type="date"> gives YYYY-MM-DD; the API stores DD/MM/YYYY.
 export const aFechaApi = (iso: string) => iso.split('-').reverse().join('/')
 
 export type Claims = { rol?: string; cargo?: string; exp?: number; iat?: number; [k: string]: unknown }
 
-type LoginResponse = { token: string; usuario: Usuario }
+// The user may come back as "usuario" or under its role's name ("cliente", "empleado", "administrador").
+type LoginResponse = { token: string; usuario?: Usuario; cliente?: Usuario; empleado?: Usuario; administrador?: Usuario }
 
 export const authApi = {
   async login(email: string, password: string) {
     const res = await call<LoginResponse>('POST', '/auth/login', { email, password })
     setToken(res.token)
-    return res.usuario
+    return res.usuario ?? res.cliente ?? res.empleado ?? res.administrador
   },
   // Registration may or may not log the new cliente in; if it doesn't, log in with the same credentials.
   async registro(data: RegistroInput) {

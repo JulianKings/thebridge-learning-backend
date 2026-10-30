@@ -67,13 +67,19 @@ export async function request(path: string, method = 'GET', body?: unknown, head
   return { status: res.status, body: data, ms }
 }
 
+// APIs answer errors as { message } or { error }; either is fine.
+const errorMessage = (body: unknown) => {
+  const m = field(body, 'message') ?? field(body, 'error')
+  return typeof m === 'string' ? m : undefined
+}
+
 const isObjectId = (v: unknown): v is string => typeof v === 'string' && /^[a-f\d]{24}$/i.test(v)
 
 const field = (body: unknown, key: string) => (body && typeof body === 'object' ? (body as Record<string, unknown>)[key] : undefined)
 
 function expectStatus(res: ApiResponse, expected: number[], what: string) {
   if (expected.includes(res.status)) return
-  const message = field(res.body, 'message')
+  const message = errorMessage(res.body)
   throw new CheckFailed(`${what}: esperábamos ${expected.join(' o ')} y ha devuelto ${res.status}${message ? ` (${message})` : ''}`)
 }
 
@@ -169,12 +175,15 @@ const randomId = () => Math.random().toString(36).slice(2, 10)
 const newCliente = (): TestCliente => ({ nombre: 'Cliente de prueba', email: `check.${randomId()}@thebridge.test`, password: `Check-${randomId()}` })
 const registroBody = (c: TestCliente) => ({ ...c, fechaNacimiento: '01/01/2000', genero: 'Mujer', cp: '28013' })
 const includesPassword = (body: unknown) => JSON.stringify(body ?? null).includes('"password"')
+// The logged-in user may come back as "usuario" or under its role's name.
+const USER_KEYS = ['usuario', 'cliente', 'empleado', 'administrador']
 const bearer = (token: string) => ({ Authorization: `Bearer ${token}` })
 
 type AuthState = { cliente?: TestCliente; token?: string }
 const auth = (ctx: CheckContext) => ctx.state as AuthState
 
-const STAFF = ['trabajador', 'administrador']
+// "empleado" and "trabajador" are both accepted for the Empleados collection.
+const STAFF = ['trabajador', 'empleado', 'administrador']
 const staffToken = (ctx: CheckContext) => (ctx.session && STAFF.includes(ctx.session.rol ?? '') ? ctx.session.token : null)
 const asStaff = (ctx: CheckContext) => {
   const token = staffToken(ctx)
@@ -490,7 +499,7 @@ export const LEVELS: LevelDef[] = [
           const claims = typeof token === 'string' ? decodeToken(token) : null
           if (typeof token !== 'string' || !claims) throw new CheckFailed('La respuesta debería incluir "token" con un JWT válido')
           if (claims.rol !== 'cliente') throw new CheckFailed(`El token debería llevar rol: "cliente" y lleva ${JSON.stringify(claims.rol ?? null)}`)
-          if (!field(res.body, 'usuario')) throw new CheckFailed('La respuesta debería incluir "usuario"')
+          if (!USER_KEYS.some((k) => field(res.body, k))) throw new CheckFailed('La respuesta debería incluir el usuario ("usuario" o "cliente")')
           if (includesPassword(res.body)) throw new CheckFailed('La respuesta incluye la contraseña: no la devuelvas nunca')
           auth(ctx).token = token
         },
@@ -557,7 +566,7 @@ export const LEVELS: LevelDef[] = [
         run: async (ctx) => {
           const res = await ctx.send('GET', '/ruta-que-no-existe')
           expectStatus(res, [404], 'GET /ruta-que-no-existe')
-          if (typeof field(res.body, 'message') !== 'string') throw new CheckFailed('Devuelve 404, pero no un JSON con "message"')
+          if (!errorMessage(res.body)) throw new CheckFailed('Devuelve 404, pero no un JSON con "message"')
         },
       },
       {
@@ -566,7 +575,7 @@ export const LEVELS: LevelDef[] = [
         run: async (ctx) => {
           const res = await ctx.send('POST', '/ropa', new RawBody('{"tipo": '))
           expectStatus(res, [400], 'POST /ropa con un JSON roto')
-          if (typeof field(res.body, 'message') !== 'string') throw new CheckFailed('Devuelve 400, pero no un JSON con "message"')
+          if (!errorMessage(res.body)) throw new CheckFailed('Devuelve 400, pero no un JSON con "message"')
         },
       },
       {

@@ -67,7 +67,7 @@ export async function call<T>(method: string, path: string, body?: unknown): Pro
     throw new ApiError(0, 'No se puede conectar con la API.')
   }
   const data = res.status === 204 ? null : await res.json().catch(() => null)
-  if (!res.ok) throw new ApiError(res.status, data?.message ?? `Error ${res.status}`)
+  if (!res.ok) throw new ApiError(res.status, data?.message ?? data?.error ?? `Error ${res.status}`)
   if (method !== 'GET') notify()
   return data as T
 }
