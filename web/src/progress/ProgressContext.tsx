@@ -25,8 +25,8 @@ type ProgressValue = {
   setEditorial: (on: boolean) => void
 }
 
-const CELEBRATED_KEY = 'hilo-celebrated'
-const EDITORIAL_KEY = 'hilo-editorial'
+const CELEBRATED_KEY = 'thebridge-celebrated'
+const EDITORIAL_KEY = 'thebridge-editorial'
 const POLL_MS = 30_000
 const EDITORIAL_LEVEL = 4
 

@@ -152,7 +152,7 @@ function expectDocumented(spec: Spec, routes: [string, string][]) {
 
 // Each browser registers one test cliente and reuses it, so the checks don't pile up users.
 type TestCliente = { nombre: string; email: string; password: string }
-const TEST_CLIENTE_KEY = 'hilo-check-cliente'
+const TEST_CLIENTE_KEY = 'thebridge-check-cliente'
 
 function storedCliente(): TestCliente | null {
   try {
@@ -171,7 +171,7 @@ function storeCliente(c: TestCliente) {
 }
 
 const randomId = () => Math.random().toString(36).slice(2, 10)
-const newCliente = (): TestCliente => ({ nombre: 'Cliente de prueba', email: `check.${randomId()}@thebridge.test`, password: `Check-${randomId()}` })
+const newCliente = (): TestCliente => ({ nombre: 'Cliente de prueba', email: `check.${randomId()}@thebridge.tech`, password: `Check-${randomId()}` })
 const registroBody = (c: TestCliente) => ({ ...c, fechaNacimiento: '01/01/2000', genero: 'Mujer', cp: '28013' })
 const includesPassword = (body: unknown) => JSON.stringify(body ?? null).includes('"password"')
 // The logged-in user may come back as "usuario" or under its role's name.

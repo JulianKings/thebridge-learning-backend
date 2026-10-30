@@ -14,13 +14,13 @@ export const LEVEL_ICONS: Record<number, LucideIcon> = {
 }
 
 export const LEVEL_URLS: Record<number, string> = {
-  1: 'hilo.store',
-  2: 'hilo.store/coleccion',
-  3: 'hilo.store/panel',
-  4: 'hilo.store/api-docs',
-  5: 'hilo.store/cuenta',
-  6: 'hilo.store/buscar',
-  7: 'hilo.store/gestion',
+  1: 'thebridge.store',
+  2: 'thebridge.store/coleccion',
+  3: 'thebridge.store/panel',
+  4: 'thebridge.store/api-docs',
+  5: 'thebridge.store/cuenta',
+  6: 'thebridge.store/buscar',
+  7: 'thebridge.store/gestion',
 }
 
 export function Aurora() {

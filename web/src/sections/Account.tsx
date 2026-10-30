@@ -13,7 +13,7 @@ const buttonCls = 'w-full bg-ink py-3.5 text-xs uppercase tracking-[0.2em] text-
 const PREVIEW: Usuario & { rol: string } = {
   _id: 'preview',
   nombre: 'Carlos Vidal',
-  email: 'carlos@correo.es',
+  email: 'carlos@thebridge.tech',
   fechaNacimiento: '12/04/1998',
   genero: 'Hombre',
   cp: '28013',
@@ -199,7 +199,7 @@ export function Account() {
         <div className="grid gap-10 lg:grid-cols-2">
           <div className="max-w-md space-y-5">
             <p className="pb-1 text-[11px] uppercase tracking-[0.18em]">Iniciar sesión</p>
-            <input className={inputCls} type="email" placeholder="Email" defaultValue="carlos@correo.es" aria-label="Email" />
+            <input className={inputCls} type="email" placeholder="Email" defaultValue="carlos@thebridge.tech" aria-label="Email" />
             <input className={inputCls} type="password" placeholder="Contraseña" defaultValue="supersecreta" aria-label="Contraseña" />
             <span className={`${buttonCls} block text-center`}>Entrar</span>
           </div>

@@ -4,9 +4,9 @@ import { MOCK_PROVEEDORES } from '../ropa/mock'
 import { SectionHeading } from './SectionHeading'
 
 const CLIENTES = [
-  { nombre: 'Ana Ortega', email: 'ana@correo.es', puntos: 340 },
-  { nombre: 'Carlos Vidal', email: 'carlos@correo.es', puntos: 125 },
-  { nombre: 'Marta Gil', email: 'marta@correo.es', puntos: 60 },
+  { nombre: 'Ana Ortega', email: 'ana@thebridge.tech', puntos: 340 },
+  { nombre: 'Carlos Vidal', email: 'carlos@thebridge.tech', puntos: 125 },
+  { nombre: 'Marta Gil', email: 'marta@thebridge.tech', puntos: 60 },
 ]
 
 const COMPRAS = [
@@ -94,7 +94,7 @@ export function Finale() {
       ) : (
         <p className="font-display text-2xl text-muted">Faltan {7 - completed} niveles para abrir la tienda al completo.</p>
       )}
-      <p className="mt-10 font-display text-xl tracking-[0.35em]">HILO</p>
+      <p className="mt-10 font-display text-xl tracking-[0.35em]">THEBRIDGE</p>
       <p className="mt-2 text-xs text-muted">Proyecto de aprendizaje · The Bridge</p>
     </footer>
   )

@@ -3,7 +3,7 @@ import { ApiError } from './types'
 
 // Shared by every screen that talks to the students' API: base URL, JWT session and error handling.
 
-const TOKEN_KEY = 'hilo-api-token'
+const TOKEN_KEY = 'thebridge-api-token'
 
 let token: string | null = (() => {
   try {

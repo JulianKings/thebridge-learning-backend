@@ -13,7 +13,7 @@ type CartValue = {
   clear: () => void
 }
 
-const CART_KEY = 'hilo-cart'
+const CART_KEY = 'thebridge-cart'
 const CartContext = createContext<CartValue | null>(null)
 
 function load(): CartItem[] {

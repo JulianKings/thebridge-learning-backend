@@ -89,7 +89,7 @@ function ShopFooter() {
     <footer className="mt-20 border-t border-line px-4 py-14 sm:px-8">
       <div className="mx-auto grid max-w-[1500px] gap-10 text-sm sm:grid-cols-4">
         <div>
-          <p className="font-display text-2xl tracking-[0.3em]">HILO</p>
+          <p className="font-display text-2xl tracking-[0.3em]">THEBRIDGE</p>
           <p className="mt-3 text-xs leading-relaxed text-muted">Ropa esencial hecha para durar. Proyecto de aprendizaje de The Bridge.</p>
         </div>
         {[

@@ -6,7 +6,7 @@ const proveedor = (_id: string, nombreComercial: string, web: string): Proveedor
   _id,
   nombreComercial,
   cp: '28013',
-  email: `pedidos@${web}`,
+  email: `proveedores.${web.split('.')[0]}@thebridge.tech`,
   telefono: 910000000,
   web: `https://${web}`,
   tipoProducto: ['camiseta', 'sudadera'],

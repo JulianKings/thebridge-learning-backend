@@ -46,8 +46,8 @@ export function ShopHeader() {
           ))}
         </nav>
 
-        <a href={shopHref()} className="font-display text-3xl tracking-[0.35em] sm:text-4xl">
-          HILO
+        <a href={shopHref()} className="whitespace-nowrap font-display text-xl tracking-[0.15em] sm:text-3xl sm:tracking-[0.3em]">
+          THEBRIDGE
         </a>
 
         <div className="flex items-center justify-end gap-5">
