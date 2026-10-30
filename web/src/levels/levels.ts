@@ -67,7 +67,6 @@ export async function request(path: string, method = 'GET', body?: unknown, head
   return { status: res.status, body: data, ms }
 }
 
-// APIs answer errors as { message } or { error }; either is fine.
 const errorMessage = (body: unknown) => {
   const m = field(body, 'message') ?? field(body, 'error')
   return typeof m === 'string' ? m : undefined
@@ -182,8 +181,7 @@ const bearer = (token: string) => ({ Authorization: `Bearer ${token}` })
 type AuthState = { cliente?: TestCliente; token?: string }
 const auth = (ctx: CheckContext) => ctx.state as AuthState
 
-// "empleado" and "trabajador" are both accepted for the Empleados collection.
-const STAFF = ['trabajador', 'empleado', 'administrador']
+const STAFF = ['empleado', 'administrador']
 const staffToken = (ctx: CheckContext) => (ctx.session && STAFF.includes(ctx.session.rol ?? '') ? ctx.session.token : null)
 const asStaff = (ctx: CheckContext) => {
   const token = staffToken(ctx)
@@ -469,7 +467,7 @@ export const LEVELS: LevelDef[] = [
     checks: [
       {
         id: 'registro',
-        label: 'POST /auth/registro crea un cliente',
+        label: 'POST /auth/registro crea un cliente y devuelve su token',
         run: async (ctx) => {
           const stored = storedCliente()
           const cliente = stored ?? newCliente()
@@ -478,8 +476,14 @@ export const LEVELS: LevelDef[] = [
           // Registered on a previous run: the API now rejects the repeated email, as it should.
           if (stored && [400, 409].includes(res.status)) return
           expectStatus(res, [201], 'POST /auth/registro')
-          if (includesPassword(res.body)) throw new CheckFailed('La respuesta incluye la contraseña: no la devuelvas nunca')
+          // Stored before the shape checks: the cliente exists now, and re-registering it would only hit the duplicate path.
           storeCliente(cliente)
+          if (field(field(res.body, 'cliente'), 'email') !== cliente.email) throw new CheckFailed('La respuesta debería incluir "cliente" con el email registrado')
+          const token = field(res.body, 'token')
+          const claims = typeof token === 'string' ? decodeToken(token) : null
+          if (typeof token !== 'string' || !claims) throw new CheckFailed('La respuesta debería incluir "token" con un JWT válido')
+          if (claims.rol !== 'cliente') throw new CheckFailed(`El token debería llevar rol: "cliente" y lleva ${JSON.stringify(claims.rol ?? null)}`)
+          if (includesPassword(res.body)) throw new CheckFailed('La respuesta incluye la contraseña: no la devuelvas nunca')
         },
       },
       {
@@ -566,7 +570,7 @@ export const LEVELS: LevelDef[] = [
         run: async (ctx) => {
           const res = await ctx.send('GET', '/ruta-que-no-existe')
           expectStatus(res, [404], 'GET /ruta-que-no-existe')
-          if (!errorMessage(res.body)) throw new CheckFailed('Devuelve 404, pero no un JSON con "message"')
+          if (!errorMessage(res.body)) throw new CheckFailed('Devuelve 404, pero no un JSON con "error"')
         },
       },
       {
@@ -575,7 +579,7 @@ export const LEVELS: LevelDef[] = [
         run: async (ctx) => {
           const res = await ctx.send('POST', '/ropa', new RawBody('{"tipo": '))
           expectStatus(res, [400], 'POST /ropa con un JSON roto')
-          if (!errorMessage(res.body)) throw new CheckFailed('Devuelve 400, pero no un JSON con "message"')
+          if (!errorMessage(res.body)) throw new CheckFailed('Devuelve 400, pero no un JSON con "error"')
         },
       },
       {
