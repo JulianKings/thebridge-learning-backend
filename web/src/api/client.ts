@@ -5,13 +5,33 @@ import { ApiError } from './types'
 
 const TOKEN_KEY = 'thebridge-api-token'
 
+// A JWT past its "exp" would still look like a logged-in user here while the API answers 401,
+// so expired tokens are dropped on load and a timer logs the session out when it expires.
+const msLeft = (t: string) => {
+  const exp = decodeToken(t)?.exp
+  return typeof exp === 'number' ? exp * 1000 - Date.now() : Infinity
+}
+
 let token: string | null = (() => {
   try {
-    return localStorage.getItem(TOKEN_KEY)
+    const stored = localStorage.getItem(TOKEN_KEY)
+    if (stored && msLeft(stored) <= 0) {
+      localStorage.removeItem(TOKEN_KEY)
+      return null
+    }
+    return stored
   } catch {
     return null
   }
 })()
+
+let expiryTimer: ReturnType<typeof setTimeout> | undefined
+function scheduleExpiry(t: string | null) {
+  clearTimeout(expiryTimer)
+  const ms = t ? msLeft(t) : Infinity
+  if (Number.isFinite(ms)) expiryTimer = setTimeout(() => setToken(null), Math.max(ms, 0))
+}
+scheduleExpiry(token)
 
 export const getToken = () => token
 
@@ -23,6 +43,7 @@ export function setToken(t: string | null) {
   } catch {
     // The session then lasts until reload.
   }
+  scheduleExpiry(t)
   notify()
 }
 

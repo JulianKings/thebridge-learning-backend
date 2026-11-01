@@ -183,7 +183,7 @@ const auth = (ctx: CheckContext) => ctx.state as AuthState
 
 const STAFF = ['empleado', 'administrador']
 const staffToken = (ctx: CheckContext) =>
-  ctx.session && STAFF.includes(ctx.session.rol ?? '') ? ctx.session.token : (crud(ctx).tester ?? null)
+  crud(ctx).tester ?? (ctx.session && STAFF.includes(ctx.session.rol ?? '') ? ctx.session.token : null)
 
 // The API's seeder (scripts/seed-usuarios.js) creates this empleado so level 3 can run its CRUD
 // once level 6 protects the write routes, without anyone logging in.
@@ -334,9 +334,9 @@ export const LEVELS: LevelDef[] = [
         run: async (ctx) => {
           const proveedor = await primerProveedor(ctx)
           let res = await ctx.send('POST', '/ropa', testProducto(proveedor), asStaff(ctx))
-          // Once level 6 protects writes, the CRUD runs as the seeded tester; an API without that
-          // account just skips it, since protected routes are progress, not a regression.
-          if ([401, 403].includes(res.status) && !staffToken(ctx)) {
+          // Once level 6 protects writes, the CRUD runs as the seeded tester (also when the visitor's own
+          // session was rejected); an API without that account just skips it, since protected routes are progress.
+          if ([401, 403].includes(res.status)) {
             crud(ctx).tester = (await loginTester(ctx)) ?? undefined
             if (!crud(ctx).tester) {
               crud(ctx).protegido = true
