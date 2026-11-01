@@ -9,7 +9,7 @@ export type CheckContext = {
   send: (method: string, path: string, body?: unknown, headers?: Record<string, string>) => Promise<ApiResponse>
   // Shared by the checks of one level, e.g. the id of a product created by an earlier check.
   state: Record<string, unknown>
-  // Whoever is logged in on "Mi cuenta": staff-only checks run with this session, never with stored credentials.
+  // Whoever is logged in on "Mi cuenta": staff-only checks run with this session (level 3 falls back to the seeded tester).
   session: Session | null
 }
 
@@ -98,7 +98,7 @@ const testProducto = (proveedor: string) => ({
   proveedor,
 })
 
-type CrudState = { proveedor?: string; id?: string; created?: string[]; protegido?: boolean }
+type CrudState = { proveedor?: string; id?: string; created?: string[]; protegido?: boolean; tester?: string }
 const crud = (ctx: CheckContext) => ctx.state as CrudState
 const track = (ctx: CheckContext, id: string) => (crud(ctx).created ??= []).push(id)
 
@@ -182,7 +182,19 @@ type AuthState = { cliente?: TestCliente; token?: string }
 const auth = (ctx: CheckContext) => ctx.state as AuthState
 
 const STAFF = ['empleado', 'administrador']
-const staffToken = (ctx: CheckContext) => (ctx.session && STAFF.includes(ctx.session.rol ?? '') ? ctx.session.token : null)
+const staffToken = (ctx: CheckContext) =>
+  ctx.session && STAFF.includes(ctx.session.rol ?? '') ? ctx.session.token : (crud(ctx).tester ?? null)
+
+// The API's seeder (scripts/seed-usuarios.js) creates this empleado so level 3 can run its CRUD
+// once level 6 protects the write routes, without anyone logging in.
+const TESTER = { email: 'tester@thebridge.tech', password: 'Tester1234!' }
+
+async function loginTester(ctx: CheckContext) {
+  const res = await ctx.send('POST', '/auth/login', TESTER)
+  const token = field(res.body, 'token')
+  if (res.status !== 200 || typeof token !== 'string') return null
+  return STAFF.includes(String(decodeToken(token)?.rol)) ? token : null
+}
 const asStaff = (ctx: CheckContext) => {
   const token = staffToken(ctx)
   return token ? bearer(token) : {}
@@ -321,11 +333,16 @@ export const LEVELS: LevelDef[] = [
         label: 'POST /ropa crea una prenda (201)',
         run: async (ctx) => {
           const proveedor = await primerProveedor(ctx)
-          const res = await ctx.send('POST', '/ropa', testProducto(proveedor), asStaff(ctx))
-          // Once level 6 protects writes, anonymous visitors can't run the CRUD; that's progress, not a regression.
+          let res = await ctx.send('POST', '/ropa', testProducto(proveedor), asStaff(ctx))
+          // Once level 6 protects writes, the CRUD runs as the seeded tester; an API without that
+          // account just skips it, since protected routes are progress, not a regression.
           if ([401, 403].includes(res.status) && !staffToken(ctx)) {
-            crud(ctx).protegido = true
-            throw new CheckSkipped('Ruta protegida: inicia sesión como empleado en «Mi cuenta» para comprobar el CRUD completo')
+            crud(ctx).tester = (await loginTester(ctx)) ?? undefined
+            if (!crud(ctx).tester) {
+              crud(ctx).protegido = true
+              throw new CheckSkipped(`Ruta protegida: crea la cuenta ${TESTER.email} con el seeder o inicia sesión como empleado en «Mi cuenta»`)
+            }
+            res = await ctx.send('POST', '/ropa', testProducto(proveedor), asStaff(ctx))
           }
           const id = field(res.body, '_id')
           if (res.status === 201 && isObjectId(id)) track(ctx, id)
