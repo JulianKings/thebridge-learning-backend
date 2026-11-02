@@ -78,7 +78,7 @@ function Novedades() {
     <section className="mx-auto max-w-[1500px] px-4 py-24 sm:px-8">
       <Reveal className="mb-10 flex items-end justify-between gap-6">
         <div>
-          <p className="eyebrow">Recién llegado · <span className="font-mono normal-case tracking-normal">GET /ropa?orden=-createdAt</span></p>
+          <p className="eyebrow">Recién llegado</p>
           <h2 className="mt-2 font-display text-5xl sm:text-6xl">Novedades</h2>
         </div>
         <a href={shopHref('c/todo?orden=-createdAt')} className="link-grow whitespace-nowrap text-[11px] uppercase tracking-[0.2em]">
@@ -141,7 +141,7 @@ function Ofertas() {
       <div className="mx-auto max-w-[1500px] px-4 sm:px-8">
         <Reveal className="flex flex-wrap items-end justify-between gap-6">
           <div>
-            <p className="eyebrow">Hasta -{Math.max(...ofertas.map((p) => p.descuento))}% · <span className="font-mono normal-case tracking-normal">?oferta=true&orden=-descuento</span></p>
+            <p className="eyebrow">Hasta -{Math.max(...ofertas.map((p) => p.descuento))}%</p>
             <h2 className="mt-2 font-display text-5xl sm:text-7xl">
               Precios que <em className="text-pop">se mueven</em>
             </h2>
