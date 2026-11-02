@@ -1,5 +1,4 @@
 import { ArrowRight } from 'lucide-react'
-import { API_URL } from '../config'
 import { MOCK_ROPA } from '../ropa/mock'
 import { ProductoImage } from '../ropa/ProductoImage'
 import { useProgress } from '../progress/ProgressContext'
@@ -50,7 +49,6 @@ export function Hero() {
           </div>
         ))}
       </dl>
-      <p className="px-4 py-3 font-mono text-[11px] text-muted sm:px-8">{API_URL}/status</p>
     </>
   )
 }

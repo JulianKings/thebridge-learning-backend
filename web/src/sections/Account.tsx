@@ -72,7 +72,6 @@ export function LoginForm() {
       <button disabled={busy} className={buttonCls}>
         Entrar
       </button>
-      <p className="font-mono text-[11px] text-muted">POST /auth/login · clientes, empleados y administradores</p>
     </form>
   )
 }
@@ -118,7 +117,6 @@ export function RegistroForm() {
       <button disabled={busy} className={buttonCls}>
         Crear cuenta
       </button>
-      <p className="font-mono text-[11px] text-muted">POST /auth/registro · siempre crea un cliente · validado con express-validator</p>
     </form>
   )
 }
@@ -159,7 +157,6 @@ function Perfil({ usuario, rol, onLogout }: { usuario: Usuario; rol?: string; on
           Cerrar sesión
         </button>
       )}
-      <p className="mt-4 font-mono text-[11px] text-muted">GET /auth/perfil</p>
     </>
   )
 }

@@ -343,9 +343,6 @@ export function Listing({ slug, search }: { slug?: string; search?: string }) {
           <motion.h1 key={title} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="mt-2 font-display text-5xl sm:text-6xl">
             {title}
           </motion.h1>
-          <p className="mt-3 max-w-full truncate font-mono text-[11px] text-muted" title={`GET /ropa${key}`}>
-            GET /ropa{key || ''}
-          </p>
         </div>
         <div className="flex items-center gap-6 text-[11px] uppercase tracking-[0.18em]">
           <span className="text-muted">{data ? `${data.total} prendas` : ''}</span>
@@ -383,10 +380,26 @@ export function Listing({ slug, search }: { slug?: string; search?: string }) {
           ) : prendas.length === 0 ? (
             <div className="py-24 text-center">
               <p className="font-display text-4xl">Nada por aquí…</p>
-              <p className="mt-2 text-sm text-muted">Ninguna prenda cumple todos los filtros. Prueba a quitar alguno.</p>
-              <button onClick={() => setShopQuery(new URLSearchParams())} className="mt-6 bg-ink px-6 py-3 text-[11px] uppercase tracking-[0.2em] text-paper">
-                Limpiar filtros
-              </button>
+              {grupo && query.q ? (
+                <>
+                  <p className="mt-2 text-sm text-muted">
+                    No hay «{query.q}» en {grupo}. La búsqueda solo mira dentro de la categoría elegida.
+                  </p>
+                  <a
+                    href={shopHref(`c/todo?q=${encodeURIComponent(query.q)}`)}
+                    className="mt-6 inline-block bg-ink px-6 py-3 text-[11px] uppercase tracking-[0.2em] text-paper"
+                  >
+                    Buscar en toda la colección
+                  </a>
+                </>
+              ) : (
+                <>
+                  <p className="mt-2 text-sm text-muted">Ninguna prenda cumple todos los filtros. Prueba a quitar alguno.</p>
+                  <button onClick={() => setShopQuery(new URLSearchParams())} className="mt-6 bg-ink px-6 py-3 text-[11px] uppercase tracking-[0.2em] text-paper">
+                    Limpiar filtros
+                  </button>
+                </>
+              )}
             </div>
           ) : (
             <motion.div layout className={`grid grid-cols-2 gap-x-4 gap-y-12 transition-opacity md:grid-cols-3 ${loading ? 'opacity-60' : ''}`}>

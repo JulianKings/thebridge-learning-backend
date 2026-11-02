@@ -99,7 +99,6 @@ export function Checkout() {
         <button disabled={busy} className={`${btnPrimary} mt-6 w-full`}>
           {busy ? 'Procesando…' : 'Pagar ahora'}
         </button>
-        <p className="mt-3 text-center font-mono text-[11px] text-muted">POST /compras</p>
       </aside>
     </form>
   )

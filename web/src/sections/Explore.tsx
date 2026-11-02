@@ -32,7 +32,6 @@ export function Explore() {
 
   const tipos = [...new Set((todas ?? []).map((p) => p.tipo))].sort()
   const pagina = data ?? []
-  const query = new URLSearchParams({ ...(tipo && { tipo }), page: String(page), limit: String(PAGE_SIZE) })
 
   const elegir = (t: Tipo | undefined) => {
     setTipo(t)
@@ -60,7 +59,6 @@ export function Explore() {
           </button>
         ))}
       </div>
-      <p className="mt-3 font-mono text-[11px] text-muted">GET /ropa?{query.toString()}</p>
 
       {error ? (
         <ErrorBox error={error} className="mt-8" />

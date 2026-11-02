@@ -168,10 +168,10 @@ function ApiStats() {
   const { data: proveedores } = useQuery(() => proveedoresApi.page({ limit: 1 }), [])
   const { data: filtros } = useQuery(() => ropaApi.filtros(), [])
   const stats = [
-    { value: ropa?.total, label: 'prendas en catálogo', endpoint: 'GET /ropa' },
-    { value: ofertas?.total, label: 'en oferta ahora', endpoint: 'GET /ropa?oferta=true' },
-    { value: proveedores?.total, label: 'proveedores', endpoint: 'GET /proveedores' },
-    { value: filtros?.tallas.length, label: 'tallas con stock', endpoint: 'GET /ropa/filtros' },
+    { value: ropa?.total, label: 'prendas en catálogo' },
+    { value: ofertas?.total, label: 'en oferta ahora' },
+    { value: proveedores?.total, label: 'proveedores' },
+    { value: filtros?.tallas.length, label: 'tallas con stock' },
   ]
   return (
     <section className="bg-ink px-4 py-24 text-paper sm:px-8">
@@ -187,7 +187,6 @@ function ApiStats() {
             <Reveal key={s.label} delay={i * 0.08} className="bg-ink p-6 sm:p-8">
               <p className="font-display text-6xl sm:text-7xl">{s.value === undefined ? '—' : <CountUp value={s.value} />}</p>
               <p className="mt-2 text-sm text-paper/70">{s.label}</p>
-              <p className="mt-4 font-mono text-[11px] text-pop">{s.endpoint}</p>
             </Reveal>
           ))}
         </div>

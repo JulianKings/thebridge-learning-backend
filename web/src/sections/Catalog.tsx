@@ -32,7 +32,7 @@ export function Catalog() {
   return (
     <div className="px-4 py-16 sm:px-8">
       <SectionHeading level={2} title="La colección">
-        <span className="font-mono text-[11px] text-muted">{live ? `GET /ropa · ${ropa.length} prendas` : 'GET /ropa'}</span>
+        {live && <span className="text-[11px] uppercase tracking-[0.18em] text-muted">{ropa.length} prendas</span>}
       </SectionHeading>
 
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
