@@ -4,7 +4,7 @@ import { useEffect, useId, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { aFechaApi, deFechaApi } from '../../auth/api'
-import { btnPrimary, field, toast, toastError } from '../ui'
+import { FieldError, btnPrimary, field, toast, toastError, useCampos } from '../ui'
 
 export type Method = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
 
@@ -311,6 +311,7 @@ export function RecordDrawer({ title, fields, record, endpoint, onSave, onClose 
   const initial = toForm(fields, record)
   const [values, setValues] = useState(initial)
   const [busy, setBusy] = useState(false)
+  const { campos, capturar, limpiar } = useCampos()
   const baseId = useId()
 
   const body = Object.fromEntries(
@@ -329,7 +330,7 @@ export function RecordDrawer({ title, fields, record, endpoint, onSave, onClose 
       toast(record ? 'Cambios guardados' : 'Creado')
       onClose()
     } catch (err) {
-      toastError(err)
+      capturar(err)
     } finally {
       setBusy(false)
     }
@@ -340,6 +341,7 @@ export function RecordDrawer({ title, fields, record, endpoint, onSave, onClose 
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <motion.form
         onSubmit={save}
+        noValidate
         className="absolute inset-y-0 right-0 flex w-[min(560px,100vw)] flex-col bg-paper font-sans text-ink"
         initial={{ x: '100%' }}
         animate={{ x: 0 }}
@@ -356,7 +358,12 @@ export function RecordDrawer({ title, fields, record, endpoint, onSave, onClose 
           {fields.map((f, i) => {
             const id = `${baseId}-${f.key}`
             const v = values[f.key]
-            const set = (nv: unknown) => setValues((prev) => ({ ...prev, [f.key]: nv }))
+            const set = (nv: unknown) => {
+              setValues((prev) => ({ ...prev, [f.key]: nv }))
+              limpiar(f.key)
+            }
+            const error = campos[f.key]
+            const inputCls = `${field} ${error ? 'border-bad!' : ''}`
             const label = `${f.label}${f.required && !record ? ' *' : ''}`
             return (
               <motion.div
@@ -374,7 +381,7 @@ export function RecordDrawer({ title, fields, record, endpoint, onSave, onClose 
                   <>
                     <label htmlFor={id}>{label}</label>
                     {f.type === 'select' ? (
-                      <select id={id} className={field} value={String(v)} onChange={(e) => set(e.target.value)}>
+                      <select id={id} className={inputCls} value={String(v)} onChange={(e) => set(e.target.value)} aria-invalid={!!error}>
                         {f.options?.map((o) => (
                           <option key={o} value={o} className="bg-paper capitalize">
                             {o}
@@ -386,7 +393,8 @@ export function RecordDrawer({ title, fields, record, endpoint, onSave, onClose 
                         id={id}
                         type={f.type === 'tags' ? 'text' : (f.type ?? 'text')}
                         step={f.type === 'number' ? 'any' : undefined}
-                        className={field}
+                        className={inputCls}
+                        aria-invalid={!!error}
                         value={String(v ?? '')}
                         placeholder={f.type === 'password' && record ? 'Déjala vacía para no cambiarla' : undefined}
                         onChange={(e) => set(e.target.value)}
@@ -394,12 +402,14 @@ export function RecordDrawer({ title, fields, record, endpoint, onSave, onClose 
                     )}
                   </>
                 )}
-                {f.hint && <p className="mt-1.5">{f.hint}</p>}
+                <FieldError msg={error} />
+                {f.hint && !error && <p className="mt-1.5">{f.hint}</p>}
               </motion.div>
             )
           })}
         </div>
         <div className="drawer-footer border-t border-line px-6 py-4">
+          <p className="mb-2 text-[10px] uppercase tracking-[0.18em] text-muted">Validado en la API con express-validator</p>
           <pre className="mb-4 max-h-28 overflow-auto bg-ink p-3 font-mono text-[10px] leading-relaxed text-paper/80">
             <span className="text-pop">{record ? 'PATCH' : 'POST'}</span> {endpoint}
             {'\n'}

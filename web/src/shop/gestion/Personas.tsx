@@ -22,7 +22,7 @@ const LIMIT = 8
 const base: FieldDef[] = [
   { key: 'nombre', label: 'Nombre', required: true, wide: true },
   { key: 'email', label: 'Email', type: 'email', required: true },
-  { key: 'password', label: 'Contraseña', type: 'password', required: true },
+  { key: 'password', label: 'Contraseña', type: 'password', required: true, hint: 'Mínimo 8 caracteres, con al menos una letra y un número' },
   { key: 'fechaNacimiento', label: 'Nacimiento', type: 'date', required: true },
   { key: 'genero', label: 'Género', type: 'select', options: GENEROS, required: true },
 ]
@@ -41,8 +41,8 @@ const CONFIG: Record<Coleccion, Config> = {
     singular: 'cliente',
     fields: [
       ...base,
-      { key: 'cp', label: 'Código postal', required: true },
-      { key: 'puntos', label: 'Puntos', type: 'number' },
+      { key: 'cp', label: 'Código postal', required: true, hint: 'CP español de 5 dígitos' },
+      { key: 'puntos', label: 'Puntos', type: 'number', hint: 'Número entero, 0 o más' },
       { key: 'afiliado', label: 'Código de afiliado' },
     ],
     sortable: [{ field: 'puntos', label: 'Puntos' }],
@@ -53,12 +53,12 @@ const CONFIG: Record<Coleccion, Config> = {
     singular: 'empleado',
     fields: [
       ...base,
-      { key: 'cp', label: 'Código postal', required: true },
+      { key: 'cp', label: 'Código postal', required: true, hint: 'CP español de 5 dígitos' },
       { key: 'cargo', label: 'Cargo', type: 'select', options: CARGOS, required: true },
       { key: 'salario', label: 'Salario (€)', type: 'number', required: true },
       { key: 'horario', label: 'Horario', required: true, hint: 'Por ejemplo: L-V 9:00-17:00' },
       { key: 'altaSS', label: 'Alta en la Seguridad Social', type: 'date' },
-      { key: 'bajaSS', label: 'Baja en la Seguridad Social', type: 'date' },
+      { key: 'bajaSS', label: 'Baja en la Seguridad Social', type: 'date', hint: 'No puede ser anterior al alta' },
       { key: 'vacaciones', label: 'De vacaciones', type: 'checkbox' },
     ],
     sortable: [

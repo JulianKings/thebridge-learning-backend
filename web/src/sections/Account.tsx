@@ -5,7 +5,8 @@ import { aFechaApi, authApi, useSession } from '../auth/api'
 import { DemoAccounts } from '../auth/DemoAccounts'
 import type { Genero, RegistroInput, Usuario } from '../auth/api'
 import { useProgress } from '../progress/ProgressContext'
-import { ErrorBox, toast, toastError } from '../shop/ui'
+import { DEMO_ACCOUNTS } from '../auth/demo'
+import { ErrorBox, FieldError, toast, useCampos } from '../shop/ui'
 import { SectionHeading } from './SectionHeading'
 
 const inputCls = 'w-full border-b border-line bg-transparent py-2.5 text-sm outline-none placeholder:text-muted focus:border-ink'
@@ -22,7 +23,7 @@ const PREVIEW: Usuario & { rol: string } = {
   rol: 'cliente',
 }
 
-function Field({ label, children }: { label: string; children: (id: string) => ReactNode }) {
+function Field({ label, hint, error, children }: { label: string; hint?: string; error?: string; children: (id: string) => ReactNode }) {
   const id = useId()
   return (
     <div>
@@ -30,12 +31,16 @@ function Field({ label, children }: { label: string; children: (id: string) => R
         {label}
       </label>
       {children(id)}
+      <FieldError msg={error} />
+      {hint && !error && <p className="pt-1.5 text-[11px] text-muted">{hint}</p>}
     </div>
   )
 }
 
+// Validation happens in the API (express-validator); its messages are shown under each field.
 function useSubmit() {
   const [busy, setBusy] = useState(false)
+  const { campos, capturar, limpiar } = useCampos()
   const run = async (e: FormEvent, fn: () => Promise<unknown>, ok: string) => {
     e.preventDefault()
     setBusy(true)
@@ -43,20 +48,23 @@ function useSubmit() {
       await fn()
       toast(ok)
     } catch (err) {
-      toastError(err)
+      capturar(err)
     } finally {
       setBusy(false)
     }
   }
-  return { busy, run }
+  const cls = (campo: string) => `${inputCls} ${campos[campo] ? 'border-bad!' : ''}`
+  return { busy, run, campos, limpiar, cls }
 }
 
+const ADMIN = DEMO_ACCOUNTS.find((a) => a.rol === 'administrador')!
+
 export function LoginForm() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const [email, setEmail] = useState(ADMIN.email)
+  const [password, setPassword] = useState(ADMIN.password)
   const { busy, run } = useSubmit()
   return (
-    <form onSubmit={(e) => run(e, () => authApi.login(email, password), 'Sesión iniciada')} className="space-y-5">
+    <form onSubmit={(e) => run(e, () => authApi.login(email, password), 'Sesión iniciada')} noValidate className="space-y-5">
       <Field label="Email">{(id) => <input id={id} type="email" className={inputCls} value={email} onChange={(e) => setEmail(e.target.value)} />}</Field>
       <Field label="Contraseña">
         {(id) => <input id={id} type="password" className={inputCls} value={password} onChange={(e) => setPassword(e.target.value)} />}
@@ -71,33 +79,46 @@ export function LoginForm() {
 
 export function RegistroForm() {
   const [data, setData] = useState<RegistroInput>({ nombre: '', email: '', password: '', fechaNacimiento: '', genero: 'Mujer', cp: '' })
-  const set = (patch: Partial<RegistroInput>) => setData((d) => ({ ...d, ...patch }))
-  const { busy, run } = useSubmit()
+  const { busy, run, campos, limpiar, cls } = useSubmit()
+  const set = (patch: Partial<RegistroInput>) => {
+    setData((d) => ({ ...d, ...patch }))
+    Object.keys(patch).forEach(limpiar)
+  }
   return (
-    <form onSubmit={(e) => run(e, () => authApi.registro({ ...data, fechaNacimiento: aFechaApi(data.fechaNacimiento) }), 'Cuenta creada')} className="space-y-5">
-      <Field label="Nombre">{(id) => <input id={id} className={inputCls} value={data.nombre} onChange={(e) => set({ nombre: e.target.value })} />}</Field>
-      <Field label="Email">{(id) => <input id={id} type="email" className={inputCls} value={data.email} onChange={(e) => set({ email: e.target.value })} />}</Field>
-      <Field label="Contraseña">
-        {(id) => <input id={id} type="password" className={inputCls} value={data.password} onChange={(e) => set({ password: e.target.value })} />}
+    <form
+      onSubmit={(e) => run(e, () => authApi.registro({ ...data, fechaNacimiento: aFechaApi(data.fechaNacimiento) }), 'Cuenta creada')}
+      noValidate
+      className="space-y-5"
+    >
+      <Field label="Nombre" error={campos.nombre}>
+        {(id) => <input id={id} className={cls('nombre')} value={data.nombre} onChange={(e) => set({ nombre: e.target.value })} />}
       </Field>
-      <div className="grid grid-cols-3 gap-4">
-        <Field label="Nacimiento">
-          {(id) => <input id={id} type="date" className={inputCls} value={data.fechaNacimiento} onChange={(e) => set({ fechaNacimiento: e.target.value })} />}
+      <Field label="Email" error={campos.email}>
+        {(id) => <input id={id} type="email" className={cls('email')} value={data.email} onChange={(e) => set({ email: e.target.value })} />}
+      </Field>
+      <Field label="Contraseña" hint="Mínimo 8 caracteres, con al menos una letra y un número" error={campos.password}>
+        {(id) => <input id={id} type="password" className={cls('password')} value={data.password} onChange={(e) => set({ password: e.target.value })} />}
+      </Field>
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Field label="Nacimiento" error={campos.fechaNacimiento}>
+          {(id) => <input id={id} type="date" className={cls('fechaNacimiento')} value={data.fechaNacimiento} onChange={(e) => set({ fechaNacimiento: e.target.value })} />}
         </Field>
-        <Field label="Género">
+        <Field label="Género" error={campos.genero}>
           {(id) => (
-            <select id={id} className={inputCls} value={data.genero} onChange={(e) => set({ genero: e.target.value as Genero })}>
-              <option className="bg-paper">Mujer</option>
-              <option className="bg-paper">Hombre</option>
+            <select id={id} className={cls('genero')} value={data.genero} onChange={(e) => set({ genero: e.target.value as Genero })}>
+              <option>Mujer</option>
+              <option>Hombre</option>
             </select>
           )}
         </Field>
-        <Field label="Código postal">{(id) => <input id={id} className={inputCls} value={data.cp} onChange={(e) => set({ cp: e.target.value })} />}</Field>
+        <Field label="Código postal" error={campos.cp}>
+          {(id) => <input id={id} className={cls('cp')} value={data.cp} onChange={(e) => set({ cp: e.target.value })} />}
+        </Field>
       </div>
       <button disabled={busy} className={buttonCls}>
         Crear cuenta
       </button>
-      <p className="font-mono text-[11px] text-muted">POST /auth/registro · siempre crea un cliente</p>
+      <p className="font-mono text-[11px] text-muted">POST /auth/registro · siempre crea un cliente · validado con express-validator</p>
     </form>
   )
 }

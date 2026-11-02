@@ -171,7 +171,7 @@ function storeCliente(c: TestCliente) {
 }
 
 const randomId = () => Math.random().toString(36).slice(2, 10)
-const newCliente = (): TestCliente => ({ nombre: 'Cliente de prueba', email: `check.${randomId()}@thebridge.tech`, password: `Check-${randomId()}` })
+const newCliente = (): TestCliente => ({ nombre: 'Cliente de prueba', email: `check.${randomId()}@thebridge.tech`, password: `Check-${randomId()}-1` })
 const registroBody = (c: TestCliente) => ({ ...c, fechaNacimiento: '01/01/2000', genero: 'Mujer', cp: '28013' })
 const includesPassword = (body: unknown) => JSON.stringify(body ?? null).includes('"password"')
 // The logged-in user may come back as "usuario" or under its role's name.

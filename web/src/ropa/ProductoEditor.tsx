@@ -3,7 +3,7 @@ import { Plus, Trash2, X } from 'lucide-react'
 import { useId, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { btnPrimary, field, toast, toastError } from '../shop/ui'
+import { FieldError, btnPrimary, field, toast, useCampos } from '../shop/ui'
 import { ropaApi } from './api'
 import { ProductoImage } from './ProductoImage'
 import { MAX_DESCUENTO, TALLAS, TIPOS, nombreTipo } from './types'
@@ -36,16 +36,26 @@ const toInput = (p: Producto): ProductoInput => ({
   proveedor: typeof p.proveedor === 'object' && p.proveedor ? p.proveedor._id : p.proveedor,
 })
 
-function Field({ label, hint, className = '', children }: { label: string; hint?: string; className?: string; children: (id: string) => ReactNode }) {
+function Field({ label, hint, error, className = '', children }: {
+  label: string
+  hint?: string
+  error?: string
+  className?: string
+  children: (id: string) => ReactNode
+}) {
   const id = useId()
   return (
     <div className={`text-[11px] text-muted ${className}`}>
       <label htmlFor={id}>{label}</label>
       {children(id)}
-      {hint && <p className="mt-2">{hint}</p>}
+      <FieldError msg={error} />
+      {hint && !error && <p className="mt-2">{hint}</p>}
     </div>
   )
 }
+
+// Optional texts go out only when filled: the API validates an empty "foto" as a broken URL.
+const toPayload = (p: ProductoInput): ProductoInput => ({ ...p, evento: p.evento?.trim() || undefined, foto: p.foto?.trim() || undefined })
 
 type Props = { producto: Producto | null; proveedores: Proveedor[]; onClose: () => void }
 
@@ -54,7 +64,12 @@ type Props = { producto: Producto | null; proveedores: Proveedor[]; onClose: () 
 export function ProductoEditor({ producto, proveedores, onClose }: Props) {
   const [p, setP] = useState<ProductoInput>(() => (producto ? toInput(producto) : blank(proveedores[0]?._id)))
   const [busy, setBusy] = useState(false)
-  const set = (patch: Partial<ProductoInput>) => setP((prev) => ({ ...prev, ...patch }))
+  const { campos, capturar, limpiar } = useCampos()
+  const set = (patch: Partial<ProductoInput>) => {
+    setP((prev) => ({ ...prev, ...patch }))
+    Object.keys(patch).forEach(limpiar)
+  }
+  const cls = (campo: keyof ProductoInput) => `${field} ${campos[campo] ? 'border-bad!' : ''}`
   const setTalla = (i: number, patch: Partial<ProductoInput['talla'][number]>) =>
     set({ talla: p.talla.map((t, j) => (j === i ? { ...t, ...patch } : t)) })
   const nextTalla = TALLAS.find((t) => !p.talla.some((x) => x.talla_tipo === t))
@@ -63,12 +78,12 @@ export function ProductoEditor({ producto, proveedores, onClose }: Props) {
     e.preventDefault()
     setBusy(true)
     try {
-      if (producto) await ropaApi.update(producto._id, p)
-      else await ropaApi.create(p)
+      if (producto) await ropaApi.update(producto._id, toPayload(p))
+      else await ropaApi.create(toPayload(p))
       toast(producto ? 'Prenda actualizada' : 'Prenda creada')
       onClose()
     } catch (err) {
-      toastError(err)
+      capturar(err)
     } finally {
       setBusy(false)
     }
@@ -79,6 +94,7 @@ export function ProductoEditor({ producto, proveedores, onClose }: Props) {
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <motion.form
         onSubmit={save}
+        noValidate
         className="absolute inset-y-0 right-0 flex w-[min(580px,100vw)] flex-col bg-paper font-sans text-ink"
         initial={{ x: '100%' }}
         animate={{ x: 0 }}
@@ -95,25 +111,25 @@ export function ProductoEditor({ producto, proveedores, onClose }: Props) {
         <div className="flex-1 space-y-6 overflow-y-auto px-6 py-6">
           <div className="flex gap-5">
             <ProductoImage tipo={p.tipo} foto={p.foto} seed={producto?._id ?? 'nuevo'} className="h-40 w-30 shrink-0" />
-            <Field label="Foto (URL, opcional)" hint="Sin foto, o si la URL no carga, se muestra un dibujo del tipo de prenda." className="flex-1">
-              {(id) => <input id={id} className={field} value={p.foto} onChange={(e) => set({ foto: e.target.value })} placeholder="https://…" />}
+            <Field label="Foto (URL, opcional)" hint="Sin foto, o si la URL no carga, se muestra un dibujo del tipo de prenda." error={campos.foto} className="flex-1">
+              {(id) => <input id={id} className={cls('foto')} value={p.foto} onChange={(e) => set({ foto: e.target.value })} placeholder="https://…" />}
             </Field>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Tipo">
+            <Field label="Tipo" error={campos.tipo}>
               {(id) => (
-                <select id={id} className={field} value={p.tipo} onChange={(e) => set({ tipo: e.target.value as Tipo })}>
+                <select id={id} className={cls('tipo')} value={p.tipo} onChange={(e) => set({ tipo: e.target.value as Tipo })}>
                   {TIPOS.map((t) => (
                     <option key={t} value={t} className="bg-paper">{nombreTipo(t)}</option>
                   ))}
                 </select>
               )}
             </Field>
-            <Field label="Temporada">
+            <Field label="Temporada" error={campos.temporada}>
               {(id) => (
                 <>
-                  <input id={id} className={field} list={`${id}-opciones`} value={p.temporada} onChange={(e) => set({ temporada: e.target.value })} />
+                  <input id={id} className={cls('temporada')} list={`${id}-opciones`} value={p.temporada} onChange={(e) => set({ temporada: e.target.value })} />
                   <datalist id={`${id}-opciones`}>
                     {TEMPORADAS.map((t) => (
                       <option key={t} value={t} />
@@ -125,11 +141,11 @@ export function ProductoEditor({ producto, proveedores, onClose }: Props) {
           </div>
 
           <div className="grid grid-cols-3 gap-4">
-            <Field label="Precio (€)">
-              {(id) => <input id={id} type="number" step="0.01" className={field} value={p.precio} onChange={(e) => set({ precio: Number(e.target.value) })} />}
+            <Field label="Precio (€)" error={campos.precio}>
+              {(id) => <input id={id} type="number" step="0.01" className={cls('precio')} value={p.precio} onChange={(e) => set({ precio: Number(e.target.value) })} />}
             </Field>
-            <Field label={`Descuento (máx. ${MAX_DESCUENTO} %)`}>
-              {(id) => <input id={id} type="number" className={field} value={p.descuento} onChange={(e) => set({ descuento: Number(e.target.value) })} />}
+            <Field label={`Descuento (máx. ${MAX_DESCUENTO} %)`} error={campos.descuento}>
+              {(id) => <input id={id} type="number" className={cls('descuento')} value={p.descuento} onChange={(e) => set({ descuento: Number(e.target.value) })} />}
             </Field>
             <label className="flex items-end gap-2 pb-2.5 text-sm">
               <input type="checkbox" checked={p.disponible} onChange={(e) => set({ disponible: e.target.checked })} /> Disponible
@@ -137,12 +153,12 @@ export function ProductoEditor({ producto, proveedores, onClose }: Props) {
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Evento (opcional)">
-              {(id) => <input id={id} className={field} value={p.evento} onChange={(e) => set({ evento: e.target.value })} placeholder="Rebajas, Black Friday…" />}
+            <Field label="Evento (opcional)" error={campos.evento}>
+              {(id) => <input id={id} className={cls('evento')} value={p.evento} onChange={(e) => set({ evento: e.target.value })} placeholder="Rebajas, Black Friday…" />}
             </Field>
-            <Field label="Proveedor">
+            <Field label="Proveedor" error={campos.proveedor}>
               {(id) => (
-                <select id={id} className={field} value={p.proveedor} onChange={(e) => set({ proveedor: e.target.value })}>
+                <select id={id} className={cls('proveedor')} value={p.proveedor} onChange={(e) => set({ proveedor: e.target.value })}>
                   {!p.proveedor && <option value="">{proveedores.length ? 'Elige un proveedor' : 'Sin proveedores'}</option>}
                   {proveedores.map((pr) => (
                     <option key={pr._id} value={pr._id} className="bg-paper">{pr.nombreComercial}</option>
@@ -192,6 +208,7 @@ export function ProductoEditor({ producto, proveedores, onClose }: Props) {
                 </li>
               ))}
             </ul>
+            <FieldError msg={campos.talla} />
           </div>
         </div>
 

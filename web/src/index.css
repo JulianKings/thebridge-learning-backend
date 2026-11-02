@@ -16,8 +16,10 @@
   --pop-soft: #ffe6dc;
 }
 
-/* Editorial theme, the level 4 reward. */
+/* Editorial theme, the level 4 reward. color-scheme makes native widgets (option lists,
+   date pickers, scrollbars) dark too, or their popups show light text on white. */
 :root[data-editorial='on'] {
+  color-scheme: dark;
   --paper: #0f0e0d;
   --paper-2: #1a1917;
   --ink: #f2efe9;
@@ -121,6 +123,11 @@
 
 html {
   scroll-behavior: smooth;
+}
+
+select option {
+  background-color: var(--paper);
+  color: var(--ink);
 }
 
 body {

@@ -1,5 +1,5 @@
 import { API_URL } from '../config'
-import { ApiError } from './types'
+import { ApiError, camposDe } from './types'
 
 // Shared by every screen that talks to the students' API: base URL, JWT session and error handling.
 
@@ -110,7 +110,7 @@ async function send<T>(method: string, path: string, body?: unknown): Promise<{ 
   }
   const data = res.status === 204 ? null : await res.json().catch(() => null)
   record({ method, path, status: res.status, ms: Math.round(performance.now() - start) })
-  if (!res.ok) throw new ApiError(res.status, data?.message ?? data?.error ?? `Error ${res.status}`)
+  if (!res.ok) throw new ApiError(res.status, data?.message ?? data?.error ?? `Error ${res.status}`, camposDe(data?.errores))
   if (method !== 'GET') notify()
   return { data: data as T, res }
 }

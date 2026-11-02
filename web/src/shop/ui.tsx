@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { useSyncExternalStore } from 'react'
+import { useState, useSyncExternalStore } from 'react'
 import { ApiError } from '../api/types'
 
 type Toast = { id: number; text: string; kind: 'ok' | 'error' }
@@ -19,6 +19,42 @@ export function toast(text: string, kind: Toast['kind'] = 'ok') {
 
 export const toastError = (e: unknown) =>
   toast(e instanceof ApiError ? `${e.status} · ${e.message}` : 'Algo ha fallado.', 'error')
+
+// Keeps the API's validation messages per field until the user edits that field.
+export function useCampos() {
+  const [campos, setCampos] = useState<Record<string, string>>({})
+  const capturar = (err: unknown) => {
+    const porCampo = err instanceof ApiError ? err.campos : {}
+    setCampos(porCampo)
+    if (Object.keys(porCampo).length) toast(`${(err as ApiError).status} · Revisa los campos marcados`, 'error')
+    else toastError(err)
+  }
+  const limpiar = (campo: string) =>
+    setCampos((c) => {
+      if (!(campo in c)) return c
+      const { [campo]: _, ...resto } = c
+      return resto
+    })
+  return { campos, capturar, limpiar, reset: () => setCampos({}) }
+}
+
+export function FieldError({ msg }: { msg?: string }) {
+  return (
+    <AnimatePresence initial={false}>
+      {msg && (
+        <motion.p
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          exit={{ opacity: 0, height: 0 }}
+          className="overflow-hidden pt-1.5 text-[11px] leading-snug text-bad"
+          role="alert"
+        >
+          {msg}
+        </motion.p>
+      )}
+    </AnimatePresence>
+  )
+}
 
 export function Toaster() {
   const list = useSyncExternalStore(

@@ -31,6 +31,25 @@ export const esPersonal = (rol?: string) => rol === 'empleado' || rol === 'admin
 export const aFechaApi = (iso: string) => iso.split('-').reverse().join('/')
 export const deFechaApi = (fecha = '') => (/^\d{2}\/\d{2}\/\d{4}$/.test(fecha) ? fecha.split('/').reverse().join('-') : '')
 
+const DEMO_OFF_KEY = 'thebridge-demo-off'
+
+export function demoAuto() {
+  try {
+    return localStorage.getItem(DEMO_OFF_KEY) !== '1'
+  } catch {
+    return true
+  }
+}
+
+function setDemoAuto(on: boolean) {
+  try {
+    if (on) localStorage.removeItem(DEMO_OFF_KEY)
+    else localStorage.setItem(DEMO_OFF_KEY, '1')
+  } catch {
+    // Without storage the showcase login simply comes back on reload.
+  }
+}
+
 export type Claims = { rol?: string; cargo?: string; exp?: number; iat?: number; [k: string]: unknown }
 
 // The API returns the user under its role's name: "cliente", "empleado" or "administrador".
@@ -39,6 +58,7 @@ type LoginResponse = { token: string; usuario?: Usuario; cliente?: Usuario; empl
 export const authApi = {
   async login(email: string, password: string) {
     const res = await call<LoginResponse>('POST', '/auth/login', { email, password })
+    setDemoAuto(true)
     setToken(res.token)
     return res.usuario ?? res.cliente ?? res.empleado ?? res.administrador
   },
@@ -49,7 +69,11 @@ export const authApi = {
     else await authApi.login(data.email, data.password)
   },
   perfil: () => call<Usuario>('GET', '/auth/perfil'),
-  logout: () => setToken(null),
+  // An explicit logout also stops the showcase from logging the admin back in (see auth/demo.ts).
+  logout: () => {
+    setDemoAuto(false)
+    setToken(null)
+  },
 }
 
 export function useSession() {
